@@ -11,7 +11,6 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.metadata.FixedMetadataValue;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -49,7 +48,7 @@ public class WardrobeGUI {
                 ChatColor.translateAlternateColorCodes('&', this.title));
 
         createGrayPaneButtons();
-        createBackgroundPanes();
+        createArmourSlots();
         createEquipUnequipButtons(inventory);
 
         final Button closeButton = new Button(this.size - 5) {
@@ -77,39 +76,71 @@ public class WardrobeGUI {
         player.openInventory(inventory);
     }
 
-    private void createBackgroundPanes() {
-        Map<Integer, String> loreMap = new HashMap<>();
-        loreMap.put(0, "Helmet");
-        loreMap.put(1, "Chestplate");
-        loreMap.put(2, "Leggings");
-        loreMap.put(3, "Boots");
+    /**
+     * Creates background tiles and provides functionality for clicking on a background tile with a piece of armour.
+     */
+    private void createArmourSlots() {
+        Map<Integer, String> loreMap = Map.of(
+                0, "Helmet",
+                1, "Chestplate",
+                2, "Leggings",
+                3, "Boots"
+        );
 
-        Map<Integer, Material> materialMap = new HashMap<>();
-        materialMap.put(0, Material.ORANGE_STAINED_GLASS_PANE);
-        materialMap.put(1, Material.YELLOW_STAINED_GLASS_PANE);
-        materialMap.put(2, Material.LIME_STAINED_GLASS_PANE);
-        materialMap.put(3, Material.GREEN_STAINED_GLASS_PANE);
-        materialMap.put(4, Material.LIGHT_BLUE_STAINED_GLASS_PANE);
-        materialMap.put(5, Material.CYAN_STAINED_GLASS_PANE);
-        materialMap.put(6, Material.BLUE_STAINED_GLASS_PANE);
-        materialMap.put(7, Material.PURPLE_STAINED_GLASS_PANE);
-        materialMap.put(8, Material.MAGENTA_STAINED_GLASS_PANE);
+        Map<Integer, Material> materialMap = Map.of(
+                0, Material.ORANGE_STAINED_GLASS_PANE,
+                1, Material.YELLOW_STAINED_GLASS_PANE,
+                2, Material.LIME_STAINED_GLASS_PANE,
+                3, Material.GREEN_STAINED_GLASS_PANE,
+                4, Material.LIGHT_BLUE_STAINED_GLASS_PANE,
+                5, Material.CYAN_STAINED_GLASS_PANE,
+                6, Material.BLUE_STAINED_GLASS_PANE,
+                7, Material.PURPLE_STAINED_GLASS_PANE,
+                8, Material.MAGENTA_STAINED_GLASS_PANE
+        );
+
         for (int i = 0; i < size - 10; i++) {
-            int column = i;
+            int column = i % 9;
+            int row = i / 9;
             this.buttons.add(new Button(i) {
 
                 @Override
                 public ItemStack getItem() {
-                    return createItemStack(materialMap.get(column % 9), ChatColor.GOLD + loreMap.get(column / 9));
+                    return createItemStack(materialMap.get(column), ChatColor.GOLD + loreMap.get(row));
                 }
 
+
+                /**
+                 *  When an armour slot is clicked, if it is clicked with a corresponding piece of armour, update the tile and delete the item from cursor
+                 * @param player The player clicking
+                 */
                 @Override
                 public void onClick(Player player) {
-                    String itemOnCursor = player.getItemOnCursor().getType().toString();
-                    if (itemOnCursor.length() > 0) {
-                        if (itemOnCursor.toLowerCase().contains(this.getItem().getItemMeta().getDisplayName().toLowerCase().substring(2))) {
-                            player.getOpenInventory().setItem(this.getSlot(), player.getItemOnCursor());
+                    ItemStack itemOnCursor = player.getItemOnCursor();
+                    if (itemOnCursor.getType() != Material.AIR) {
+                        return;
+                    }
+
+                    // Name of item on cursor
+                    String itemName = itemOnCursor.getType().toString().toLowerCase();
+                    // Name of armour slot i.e. helmet, chestplate, leggings, boots.
+                    String slotName = getItem().getItemMeta().getDisplayName().toLowerCase().substring(2);
+
+                    /* Check that cursor item is being clicked on a slot that matches.
+                    *  e.g. diamond_leggings contains leggings.
+                     */
+                    if (itemName.contains(slotName)) {
+                        Inventory inventoryInstance = player.getInventory();
+
+                        // If item in slot is a block (i.e. the background pane) then place armor and delete pane item
+                        if (inventoryInstance.getItem(getSlot()).getType().isBlock()) {
+                            inventoryInstance.setItem(getSlot(), itemOnCursor);
                             player.setItemOnCursor(null);
+                            // If item in slot is not block, must be armour piece, then swap cursor and slot
+                        } else {
+                            ItemStack itemToReturn = inventoryInstance.getItem(getSlot());
+                            inventoryInstance.setItem(getSlot(), itemOnCursor);
+                            player.setItemOnCursor(itemToReturn);
                         }
                     }
                 }
