@@ -118,29 +118,17 @@ public class WardrobeGUI {
                 public void onClick(Player player) {
                     ItemStack itemOnCursor = player.getItemOnCursor();
                     if (itemOnCursor.getType() != Material.AIR) {
-                        return;
-                    }
-
-                    // Name of item on cursor
-                    String itemName = itemOnCursor.getType().toString().toLowerCase();
-                    // Name of armour slot i.e. helmet, chestplate, leggings, boots.
-                    String slotName = getItem().getItemMeta().getDisplayName().toLowerCase().substring(2);
-
-                    /* Check that cursor item is being clicked on a slot that matches.
-                    *  e.g. diamond_leggings contains leggings.
-                     */
-                    if (itemName.contains(slotName)) {
-                        Inventory inventoryInstance = player.getInventory();
-
-                        // If item in slot is a block (i.e. the background pane) then place armor and delete pane item
-                        if (inventoryInstance.getItem(getSlot()).getType().isBlock()) {
-                            inventoryInstance.setItem(getSlot(), itemOnCursor);
-                            player.setItemOnCursor(null);
-                            // If item in slot is not block, must be armour piece, then swap cursor and slot
-                        } else {
-                            ItemStack itemToReturn = inventoryInstance.getItem(getSlot());
-                            inventoryInstance.setItem(getSlot(), itemOnCursor);
-                            player.setItemOnCursor(itemToReturn);
+                        String itemName = itemOnCursor.getType().toString().toLowerCase();
+                        String buttonName = this.getItem().getItemMeta().getDisplayName().toLowerCase().substring(2);
+                        if (itemName.contains(buttonName)) {
+                            if (player.getOpenInventory().getItem(this.getSlot()).getType().isBlock()) {
+                                player.getOpenInventory().setItem(this.getSlot(), itemOnCursor);
+                                player.setItemOnCursor((ItemStack)null);
+                            } else {
+                                ItemStack itemToReturn = player.getOpenInventory().getItem(this.getSlot());
+                                player.getOpenInventory().setItem(this.getSlot(), itemOnCursor);
+                                player.setItemOnCursor(itemToReturn);
+                            }
                         }
                     }
                 }
