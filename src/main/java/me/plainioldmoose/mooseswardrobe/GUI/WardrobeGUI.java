@@ -1,5 +1,6 @@
 package me.plainioldmoose.mooseswardrobe.GUI;
 
+import me.plainioldmoose.mooseswardrobe.Data.WardrobeData;
 import me.plainioldmoose.mooseswardrobe.Wardrobe;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -13,6 +14,7 @@ import org.bukkit.metadata.FixedMetadataValue;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * The WardrobeGUI class represents a custom inventory GUI for the Wardrobe plugin.
@@ -47,8 +49,16 @@ public class WardrobeGUI {
         final Inventory inventory = Bukkit.createInventory(player, this.size,
                 ChatColor.translateAlternateColorCodes('&', this.title));
 
+        UUID playerUUID = player.getUniqueId();
+
+        Map<UUID, ItemStack[]> savedInventories = WardrobeData.getInstance().getSavedInventories();
+
+        if (savedInventories.containsKey(playerUUID)) {
+            inventory.setContents(savedInventories.get(playerUUID));
+        }
+
         createGrayPaneButtons();
-        createArmourSlots();
+        createArmourSlots(inventory);
         createEquipUnequipButtons(inventory);
 
         final Button closeButton = new Button(this.size - 5) {
@@ -79,7 +89,7 @@ public class WardrobeGUI {
     /**
      * Creates background tiles and provides functionality for clicking on a background tile with a piece of armour.
      */
-    private void createArmourSlots() {
+    private void createArmourSlots(Inventory inventory) {
         Map<Integer, String> loreMap = Map.of(
                 0, "Helmet",
                 1, "Chestplate",
@@ -102,37 +112,38 @@ public class WardrobeGUI {
         for (int i = 0; i < size - 10; i++) {
             int column = i % 9;
             int row = i / 9;
-            this.buttons.add(new Button(i) {
+            if (inventory.getItem(i) == null) {
+                this.buttons.add(new Button(i) {
 
-                @Override
-                public ItemStack getItem() {
-                    return createItemStack(materialMap.get(column), ChatColor.GOLD + loreMap.get(row));
-                }
+                    @Override
+                    public ItemStack getItem() {
+                        return createItemStack(materialMap.get(column), ChatColor.GOLD + loreMap.get(row));
+                    }
 
-
-                /**
-                 *  When an armour slot is clicked, if it is clicked with a corresponding piece of armour, update the tile and delete the item from cursor
-                 * @param player The player clicking
-                 */
-                @Override
-                public void onClick(Player player) {
-                    ItemStack itemOnCursor = player.getItemOnCursor();
-                    if (itemOnCursor.getType() != Material.AIR) {
-                        String itemName = itemOnCursor.getType().toString().toLowerCase();
-                        String buttonName = this.getItem().getItemMeta().getDisplayName().toLowerCase().substring(2);
-                        if (itemName.contains(buttonName)) {
-                            if (player.getOpenInventory().getItem(this.getSlot()).getType().isBlock()) {
-                                player.getOpenInventory().setItem(this.getSlot(), itemOnCursor);
-                                player.setItemOnCursor((ItemStack)null);
-                            } else {
-                                ItemStack itemToReturn = player.getOpenInventory().getItem(this.getSlot());
-                                player.getOpenInventory().setItem(this.getSlot(), itemOnCursor);
-                                player.setItemOnCursor(itemToReturn);
+                    /**
+                     *  When an armour slot is clicked, if it is clicked with a corresponding piece of armour, update the tile and delete the item from cursor
+                     * @param player The player clicking
+                     */
+                    @Override
+                    public void onClick(Player player) {
+                        ItemStack itemOnCursor = player.getItemOnCursor();
+                        if (itemOnCursor.getType() != Material.AIR) {
+                            String itemName = itemOnCursor.getType().toString().toLowerCase();
+                            String buttonName = this.getItem().getItemMeta().getDisplayName().toLowerCase().substring(2);
+                            if (itemName.contains(buttonName)) {
+                                if (player.getOpenInventory().getItem(this.getSlot()).getType().isBlock()) {
+                                    player.getOpenInventory().setItem(this.getSlot(), itemOnCursor);
+                                    player.setItemOnCursor((ItemStack) null);
+                                } else {
+                                    ItemStack itemToReturn = player.getOpenInventory().getItem(this.getSlot());
+                                    player.getOpenInventory().setItem(this.getSlot(), itemOnCursor);
+                                    player.setItemOnCursor(itemToReturn);
+                                }
                             }
                         }
                     }
-                }
-            });
+                });
+            }
         }
     }
 
