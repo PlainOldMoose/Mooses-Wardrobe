@@ -27,6 +27,7 @@ public class WardrobeData {
         for (Map.Entry<UUID, ItemStack[]> wardrobe : savedInventories.entrySet()) {
             dataConfig.set(wardrobe.getKey().toString(), wardrobe.getValue());
         }
+
         try {
             dataConfig.save(dataFile);
         } catch (IOException e) {
