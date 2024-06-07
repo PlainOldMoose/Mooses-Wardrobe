@@ -213,11 +213,11 @@ public class WardrobeGUI {
         for (int i = size - 10; i > size - 19; i--) {
             int slot = i;
             buttons.add(new Button(i) {
-                private ItemStack item;
+
 
                 @Override
                 public ItemStack getItem() {
-                    item = new ItemStack(Material.GRAY_DYE);
+                    ItemStack item = new ItemStack(Material.GRAY_DYE);
                     final ItemMeta meta = item.getItemMeta();
                     meta.setDisplayName(ChatColor.RED + "Equip Loadout");
                     item.setItemMeta(meta);
@@ -247,13 +247,25 @@ public class WardrobeGUI {
 
         if (currentMeta.getDisplayName().equals(ChatColor.RED + "Equip Loadout")) {
             // TODO - LOGIC TO EQUIP LOADOUT
+            // Set other buttons to say equip
             for (int i = size - 10; i > size - 19; i--) {
                 inventory.setItem(i, equip);
             }
 
+            player.getEquipment().setBoots(inventory.getItem(slot - 9));
+            player.getEquipment().setLeggings(inventory.getItem(slot - 18));
+            player.getEquipment().setChestplate(inventory.getItem(slot - 27));
+            player.getEquipment().setHelmet(inventory.getItem(slot - 36));
+
+            // set slot clicked to say unequip
             inventory.setItem(slot, unequip);
         } else {
-            // TODO - LOGIC TO UNEQUIP LOADOUT
+            ItemStack air = new ItemStack(Material.AIR);
+            player.getEquipment().setBoots(air);
+            player.getEquipment().setLeggings(air);
+            player.getEquipment().setChestplate(air);
+            player.getEquipment().setHelmet(air);
+
             inventory.setItem(slot, equip);
         }
     }
