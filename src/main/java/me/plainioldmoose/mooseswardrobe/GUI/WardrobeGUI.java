@@ -6,6 +6,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -49,16 +50,8 @@ public class WardrobeGUI {
         final Inventory inventory = Bukkit.createInventory(player, this.size,
                 ChatColor.translateAlternateColorCodes('&', this.title));
 
-        UUID playerUUID = player.getUniqueId();
-
-        Map<UUID, ItemStack[]> savedInventories = WardrobeData.getInstance().getSavedInventories();
-
-        if (savedInventories.containsKey(playerUUID)) {
-            inventory.setContents(savedInventories.get(playerUUID));
-        }
-
         createGrayPaneButtons();
-        createArmourSlots(inventory);
+        createArmourSlots();
         createEquipUnequipButtons(inventory);
 
         final Button closeButton = new Button(this.size - 5) {
@@ -82,6 +75,15 @@ public class WardrobeGUI {
             player.closeInventory();
         }
 
+
+        UUID playerUUID = player.getUniqueId();
+
+        Map<UUID, ItemStack[]> savedInventories = WardrobeData.getInstance().getSavedInventories();
+
+        if (savedInventories.containsKey(playerUUID)) {
+            inventory.setContents(savedInventories.get(playerUUID));
+        }
+
         player.setMetadata("WardrobeGUI", new FixedMetadataValue(Wardrobe.getInstance(), this));
         player.openInventory(inventory);
     }
@@ -89,7 +91,7 @@ public class WardrobeGUI {
     /**
      * Creates background tiles and provides functionality for clicking on a background tile with a piece of armour.
      */
-    private void createArmourSlots(Inventory inventory) {
+    private void createArmourSlots() {
         Map<Integer, String> loreMap = Map.of(
                 0, "Helmet",
                 1, "Chestplate",
@@ -112,38 +114,57 @@ public class WardrobeGUI {
         for (int i = 0; i < size - 10; i++) {
             int column = i % 9;
             int row = i / 9;
-            if (inventory.getItem(i) == null) {
-                this.buttons.add(new Button(i) {
+            this.buttons.add(new Button(i) {
 
-                    @Override
-                    public ItemStack getItem() {
-                        return createItemStack(materialMap.get(column), ChatColor.GOLD + loreMap.get(row));
+                @Override
+                public ItemStack getItem() {
+                    return createItemStack(materialMap.get(column), ChatColor.GOLD + loreMap.get(row));
+                }
+
+                /**
+                 *  When an armour slot is clicked, if it is clicked with a corresponding piece of armour, update the tile and delete the item from cursor
+                 * @param player The player clicking
+                 */
+                @Override
+                public void onClick(Player player) {
+                    // Get the item currently on the player's cursor
+                    ItemStack itemOnCursor = player.getItemOnCursor();
+                    Inventory inventory = player.getOpenInventory().getTopInventory();
+                    ItemStack currentSlotItem = inventory.getItem(this.getSlot());
+
+                    // HANDLE REMOVING
+
+                    if (itemOnCursor.getType().isAir() && !(currentSlotItem.getType().getEquipmentSlot() == EquipmentSlot.HAND)) {
+                        // Calculate default pane for this slot
+                        ItemStack defaultPane = createItemStack(materialMap.get(column), ChatColor.GOLD + loreMap.get(row));
+                        // Set cursor to current slot, then set slot to default background pane;
+                        player.setItemOnCursor(currentSlotItem);
+                        inventory.setItem(this.getSlot(), defaultPane);
                     }
 
-                    /**
-                     *  When an armour slot is clicked, if it is clicked with a corresponding piece of armour, update the tile and delete the item from cursor
-                     * @param player The player clicking
-                     */
-                    @Override
-                    public void onClick(Player player) {
-                        ItemStack itemOnCursor = player.getItemOnCursor();
-                        if (itemOnCursor.getType() != Material.AIR) {
-                            String itemName = itemOnCursor.getType().toString().toLowerCase();
-                            String buttonName = this.getItem().getItemMeta().getDisplayName().toLowerCase().substring(2);
-                            if (itemName.contains(buttonName)) {
-                                if (player.getOpenInventory().getItem(this.getSlot()).getType().isBlock()) {
-                                    player.getOpenInventory().setItem(this.getSlot(), itemOnCursor);
-                                    player.setItemOnCursor((ItemStack) null);
-                                } else {
-                                    ItemStack itemToReturn = player.getOpenInventory().getItem(this.getSlot());
-                                    player.getOpenInventory().setItem(this.getSlot(), itemOnCursor);
-                                    player.setItemOnCursor(itemToReturn);
-                                }
+                    // HANDLE INSERTING
+
+                    String itemName = itemOnCursor.getType().toString().toLowerCase();
+                    String buttonName = this.getItem().getItemMeta().getDisplayName().toLowerCase().substring(2);
+
+                    // If cursor has item
+                    if (itemOnCursor.getType() != Material.AIR) {
+                        // If item matches slot and slot is a pane
+                        if (itemName.contains(buttonName)) {
+                            // If existing slot is not a pane
+                            if (!(currentSlotItem.getType().isBlock())) {
+                                // Place cursor item in slot and set cursor to original slot item
+                                ItemStack itemToReturn = currentSlotItem;
+                                inventory.setItem(this.getSlot(), itemOnCursor);
+                                player.setItemOnCursor(itemToReturn);
+                            } else {
+                                inventory.setItem(this.getSlot(), itemOnCursor);
+                                player.setItemOnCursor(null);
                             }
                         }
                     }
-                });
-            }
+                }
+            });
         }
     }
 
