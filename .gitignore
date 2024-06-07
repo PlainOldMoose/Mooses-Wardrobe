@@ -1,6 +1,6 @@
-.classpath
-.project
-.settings/
+.idea/
+.idea_modules/
+*.iml
+out/
 target/
 build
-*.iml
