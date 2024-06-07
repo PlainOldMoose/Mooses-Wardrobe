@@ -47,13 +47,45 @@ public class WardrobeGUI {
      * @param player The player to display the GUI to.
      */
     public void displayTo(Player player) {
+        // Create basic inventory object
         final Inventory inventory = Bukkit.createInventory(player, this.size,
                 ChatColor.translateAlternateColorCodes('&', this.title));
 
+        // Create relevant buttons within GUI
         createGrayPaneButtons();
         createArmourSlots();
         createEquipUnequipButtons(inventory);
+        createCloseButton();
 
+        // Render all buttons with their assigned items and display names
+        for (final Button button : this.buttons) {
+            inventory.setItem(button.getSlot(), button.getItem());
+        }
+
+        // Error-handling to ensure no leftover metadata can interfere
+        if (player.hasMetadata("WardrobeGUI")) {
+            player.closeInventory();
+        }
+
+
+        // Load saved wardrobes from players after GUI is rendered
+        UUID playerUUID = player.getUniqueId();
+        Map<UUID, ItemStack[]> savedInventories = WardrobeData.getInstance().getSavedInventories();
+
+        // If player has wardrobe saved, set contents of their GUI to match saved wardrobe
+        if (savedInventories.containsKey(playerUUID)) {
+            inventory.setContents(savedInventories.get(playerUUID));
+        }
+
+        // Set metadata to infer menu is open and open menu
+        player.setMetadata("WardrobeGUI", new FixedMetadataValue(Wardrobe.getInstance(), this));
+        player.openInventory(inventory);
+    }
+
+    /**
+     * Creates a basic button to close the GUI.
+     */
+    private void createCloseButton() {
         final Button closeButton = new Button(this.size - 5) {
             @Override
             public ItemStack getItem() {
@@ -66,26 +98,6 @@ public class WardrobeGUI {
             }
         };
         this.buttons.add(closeButton);
-
-        for (final Button button : this.buttons) {
-            inventory.setItem(button.getSlot(), button.getItem());
-        }
-
-        if (player.hasMetadata("WardrobeGUI")) {
-            player.closeInventory();
-        }
-
-
-        UUID playerUUID = player.getUniqueId();
-
-        Map<UUID, ItemStack[]> savedInventories = WardrobeData.getInstance().getSavedInventories();
-
-        if (savedInventories.containsKey(playerUUID)) {
-            inventory.setContents(savedInventories.get(playerUUID));
-        }
-
-        player.setMetadata("WardrobeGUI", new FixedMetadataValue(Wardrobe.getInstance(), this));
-        player.openInventory(inventory);
     }
 
     /**
@@ -122,11 +134,17 @@ public class WardrobeGUI {
                 }
 
                 /**
-                 *  When an armour slot is clicked, if it is clicked with a corresponding piece of armour, update the tile and delete the item from cursor
+                 *  When an armour slot is clicked, if it is clicked with a corresponding piece of armour, update the tile and delete the item from cursor.
+                 *
                  * @param player The player clicking
                  */
                 @Override
                 public void onClick(Player player) {
+                    /*This method is quite messy however I don't see a better way of abstracting it, this is the bread and butter of how inserting / removing items into the GUI is handled.
+                     *  Each background tile is actually a button which can be clicked under certain criteria to perform certain tasks on the GUI. e.g. clicking an empty slot with a piece of armour will
+                     *  update that buttons icon to the item clicked and remove it from the player's cursor.
+                     */
+
                     // Get the item currently on the player's cursor
                     ItemStack itemOnCursor = player.getItemOnCursor();
                     Inventory inventory = player.getOpenInventory().getTopInventory();

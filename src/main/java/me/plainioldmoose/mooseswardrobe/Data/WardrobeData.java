@@ -12,17 +12,28 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * Singleton class for managing the saved inventories of players.
+ * Handles loading and saving inventory data to a YAML file.
+ */
 public class WardrobeData {
     private final static WardrobeData instance = new WardrobeData();
 
     private File dataFile;
     private FileConfiguration dataConfig;
-    private final Map<UUID, ItemStack[]> savedInventories = new HashMap<UUID, ItemStack[]>();
+    private final Map<UUID, ItemStack[]> savedInventories = new HashMap<>();
 
-    public WardrobeData() {
+    /**
+     * Private constructor to enforce singleton pattern.
+     * Loads the inventories from the data file on instantiation.
+     */
+    private WardrobeData() {
         loadInventories();
     }
 
+    /**
+     * Saves the current state of inventories to the data file.
+     */
     public void saveInventories() {
         for (Map.Entry<UUID, ItemStack[]> wardrobe : savedInventories.entrySet()) {
             dataConfig.set(wardrobe.getKey().toString(), wardrobe.getValue());
@@ -35,7 +46,11 @@ public class WardrobeData {
         }
     }
 
-
+    /**
+     * Loads the inventories from the data file into the savedInventories map.
+     * If the data file does not exist, it is created.
+     */
+    @SuppressWarnings("unchecked")
     public void loadInventories() {
         dataFile = new File(Wardrobe.getInstance().getDataFolder(), "data.yml");
 
@@ -59,10 +74,20 @@ public class WardrobeData {
         }
     }
 
+    /**
+     * Gets the map of saved inventories.
+     *
+     * @return The map containing UUIDs and their corresponding saved ItemStacks.
+     */
     public Map<UUID, ItemStack[]> getSavedInventories() {
         return savedInventories;
     }
 
+    /**
+     * Gets the single instance of the WardrobeData class.
+     *
+     * @return The singleton instance of WardrobeData.
+     */
     public static WardrobeData getInstance() {
         return instance;
     }
