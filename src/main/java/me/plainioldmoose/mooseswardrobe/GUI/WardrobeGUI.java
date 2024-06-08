@@ -23,7 +23,7 @@ import java.util.UUID;
 public class WardrobeGUI {
     private final List<Button> buttons = new ArrayList<>();
     private int size = 9 * 6;
-    private String title = "Wardrobe";
+    private String title = "              Wardrobe";
 
     public List<Button> getButtons() {
         return buttons;
@@ -56,6 +56,7 @@ public class WardrobeGUI {
         createArmourSlots();
         createEquipUnequipButtons(inventory);
         createCloseButton();
+        // TODO - Disable switching to empty slots,
 
         // Render all buttons with their assigned items and display names
         for (final Button button : this.buttons) {
@@ -66,7 +67,6 @@ public class WardrobeGUI {
         if (player.hasMetadata("WardrobeGUI")) {
             player.closeInventory();
         }
-
 
         // Load saved wardrobes from players after GUI is rendered
         UUID playerUUID = player.getUniqueId();
@@ -99,67 +99,14 @@ public class WardrobeGUI {
                 int[] armourSlots = {i - 9, i - 18, i - 27, i - 36};
                 ItemStack[] equippedArmour = player.getEquipment().getArmorContents();
                 for (int j = 0; j < armourSlots.length; j++) {
-                    if (equippedArmour[j] == null) {
-                        System.out.println("Dupe detected");
-                        contents[armourSlots[j]].setType(Material.ENDER_EYE);
+                    if (equippedArmour[j] == null && !contents[armourSlots[j]].getType().isBlock()) {
+                        player.sendMessage(buttons.get(j).getItem().toString());
+                        inventory.setItem(armourSlots[j], buttons.get(armourSlots[j] + 9).getItem());
                     }
-//                    System.out.println("Equipped = " + equippedArmour[j]);
-//                    System.out.println("Wardrobe = " + inventory.getItem(armourSlots[j]));
-//                    Material equippedItem = equippedArmour[j].getType();
-//                    ItemStack equippedItemStack = inventory.getItem(armourSlots[j]);
-//                    if (equippedItemStack != null) {
-//                        Material storedItem = equippedItemStack.getType();
-//                        if (equippedItem != storedItem) {
-//                            System.out.println("Dupe detected");
-//                            player.getEquipment().clear();
-//                        }
-//                    }
                 }
             }
         }
     }
-//        for (ItemStack item : contents) {
-//            Material buttonItem = item.getType();
-//
-//            if (buttonItem == Material.LIME_DYE) {
-//                System.out.println("Found Unequip button(s)");
-//                int slot = item.getSlot();
-//
-//                int[] armorSlots = {slot - 9, slot - 18, slot - 27, slot - 36}; // Boots, Leggings, Chestplate, Helmet slots in the inventory
-//                ItemStack item;
-//                ItemStack[] equippedItem = player.getEquipment().getArmorContents();
-//                for (int i = 0; i < armorSlots.length; i++) {
-//                    System.out.println("4");
-//
-//                    item = inventory.getItem(armorSlots[i]);
-//                    if (item != null && !(item.equals(equippedItem[i]))) {
-//                        System.out.println("Dupe detected!");
-//                    }
-//                }
-//            }
-//        }
-//        for (Button button : this.buttons) {
-//            Material buttonItem = button.getItem().getType();
-//            System.out.println("Found " + button.getItem().getItemMeta().getDisplayName());
-//            int tempCounter = 0;
-//            if (buttonItem == Material.LIME_DYE) {
-//                System.out.println("Found " + tempCounter++ + " Unequip button(s)");
-//                int slot = button.getSlot();
-//
-//                int[] armorSlots = {slot - 9, slot - 18, slot - 27, slot - 36}; // Boots, Leggings, Chestplate, Helmet slots in the inventory
-//                ItemStack item;
-//                ItemStack[] equippedItem = player.getEquipment().getArmorContents();
-//                for (int i = 0; i < armorSlots.length; i++) {
-//                    System.out.println("4");
-//
-//                    item = inventory.getItem(armorSlots[i]);
-//                    if (item != null && !(item.equals(equippedItem[i]))) {
-//                        System.out.println("Dupe detected!");
-//                    }
-//                }
-//            }
-//        }
-
 
     /**
      * Creates a basic button to close the GUI.
@@ -168,7 +115,7 @@ public class WardrobeGUI {
         final Button closeButton = new Button(this.size - 5) {
             @Override
             public ItemStack getItem() {
-                return createItemStack(Material.BARRIER, ChatColor.GOLD + "Close");
+                return createItemStack(Material.BARRIER, ChatColor.GOLD + "§lClose");
             }
 
             @Override
@@ -184,10 +131,10 @@ public class WardrobeGUI {
      */
     private void createArmourSlots() {
         Map<Integer, String> loreMap = Map.of(
-                0, "Helmet",
-                1, "Chestplate",
-                2, "Leggings",
-                3, "Boots"
+                0, "§lHelmet",
+                1, "§lChestplate",
+                2, "§lLeggings",
+                3, "§lBoots"
         );
 
         Map<Integer, Material> materialMap = Map.of(
@@ -209,7 +156,7 @@ public class WardrobeGUI {
 
                 @Override
                 public ItemStack getItem() {
-                    return createItemStack(materialMap.get(column), ChatColor.GOLD + loreMap.get(row));
+                    return createItemStack(materialMap.get(column), ChatColor.GOLD + "§l" + loreMap.get(row));
                 }
 
                 /**
@@ -231,6 +178,14 @@ public class WardrobeGUI {
 
                     // HANDLE REMOVING
 
+
+                    // DISABLE REMOVING WHILE ACTIVE
+                    int offset = this.getSlot() % 9;
+                    if (inventory.getItem(36 + offset).getType() == Material.LIME_DYE && this.getSlot() < 36) {
+                        player.sendMessage("§f[§c§lWardrobe§f]§c You cannot edit active loadout!");
+                        return;
+                    }
+
                     if (itemOnCursor.getType().isAir() && !(currentSlotItem.getType().getEquipmentSlot() == EquipmentSlot.HAND)) {
                         // Calculate default pane for this slot
                         ItemStack defaultPane = createItemStack(materialMap.get(column), ChatColor.GOLD + loreMap.get(row));
@@ -242,7 +197,7 @@ public class WardrobeGUI {
                     // HANDLE INSERTING
 
                     String itemName = itemOnCursor.getType().toString().toLowerCase();
-                    String buttonName = this.getItem().getItemMeta().getDisplayName().toLowerCase().substring(2);
+                    String buttonName = this.getItem().getItemMeta().getDisplayName().toLowerCase().substring(4);
 
                     // If cursor has item
                     if (itemOnCursor.getType() != Material.AIR) {
@@ -298,7 +253,7 @@ public class WardrobeGUI {
                 public ItemStack getItem() {
                     ItemStack item = new ItemStack(Material.GRAY_DYE);
                     final ItemMeta meta = item.getItemMeta();
-                    meta.setDisplayName(ChatColor.RED + "Equip Loadout");
+                    meta.setDisplayName(ChatColor.RED + "§lEquip Loadout");
                     item.setItemMeta(meta);
                     return item;
                 }
@@ -319,13 +274,12 @@ public class WardrobeGUI {
      * @param slot      The slot of the item to toggle.
      */
     private void toggleEquipUnequip(Player player, Inventory inventory, int slot) {
-        final ItemStack equip = createItemStack(Material.GRAY_DYE, ChatColor.RED + "Equip Loadout");
-        final ItemStack unequip = createItemStack(Material.LIME_DYE, ChatColor.GREEN + "Unequip Loadout");
+        final ItemStack equip = createItemStack(Material.GRAY_DYE, ChatColor.RED + "§lEquip Loadout");
+        final ItemStack unequip = createItemStack(Material.LIME_DYE, ChatColor.GREEN + "§lUnequip Loadout");
 
         ItemMeta currentMeta = inventory.getItem(slot).getItemMeta();
 
-        if (currentMeta.getDisplayName().equals(ChatColor.RED + "Equip Loadout")) {
-            // TODO - LOGIC TO EQUIP LOADOUT
+        if (currentMeta.getDisplayName().equals(ChatColor.RED + "§lEquip Loadout")) {
             // Set other buttons to say equip
             for (int i = size - 10; i > size - 19; i--) {
                 inventory.setItem(i, equip);
@@ -348,6 +302,7 @@ public class WardrobeGUI {
             // set slot clicked to say unequip
             inventory.setItem(slot, unequip);
         } else {
+            // Handle unequipping
             ItemStack air = new ItemStack(Material.AIR);
             player.getEquipment().setBoots(air);
             player.getEquipment().setLeggings(air);
