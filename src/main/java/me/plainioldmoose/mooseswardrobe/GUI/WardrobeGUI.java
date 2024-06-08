@@ -77,10 +77,89 @@ public class WardrobeGUI {
             inventory.setContents(savedInventories.get(playerUUID));
         }
 
+        dupeFailsafe(player, inventory);
+
         // Set metadata to infer menu is open and open menu
         player.setMetadata("WardrobeGUI", new FixedMetadataValue(Wardrobe.getInstance(), this));
         player.openInventory(inventory);
     }
+
+    /**
+     * This method is intended to remove duping from the plugin. If the player has an active slot,
+     * and a piece of armour is removed from this slot then the plugin must also delete it from the wardrobe.
+     *
+     * @param inventory The inventory to check for dupes.
+     */
+    private void dupeFailsafe(Player player, Inventory inventory) {
+        ItemStack[] contents = inventory.getContents();
+        for (int i = 0; i < contents.length; i++) {
+            Material buttonItem = contents[i].getType();
+
+            if (buttonItem == Material.LIME_DYE) {
+                int[] armourSlots = {i - 9, i - 18, i - 27, i - 36};
+                ItemStack[] equippedArmour = player.getEquipment().getArmorContents();
+                for (int j = 0; j < armourSlots.length; j++) {
+                    if (equippedArmour[j] == null) {
+                        System.out.println("Dupe detected");
+                        contents[armourSlots[j]].setType(Material.ENDER_EYE);
+                    }
+//                    System.out.println("Equipped = " + equippedArmour[j]);
+//                    System.out.println("Wardrobe = " + inventory.getItem(armourSlots[j]));
+//                    Material equippedItem = equippedArmour[j].getType();
+//                    ItemStack equippedItemStack = inventory.getItem(armourSlots[j]);
+//                    if (equippedItemStack != null) {
+//                        Material storedItem = equippedItemStack.getType();
+//                        if (equippedItem != storedItem) {
+//                            System.out.println("Dupe detected");
+//                            player.getEquipment().clear();
+//                        }
+//                    }
+                }
+            }
+        }
+    }
+//        for (ItemStack item : contents) {
+//            Material buttonItem = item.getType();
+//
+//            if (buttonItem == Material.LIME_DYE) {
+//                System.out.println("Found Unequip button(s)");
+//                int slot = item.getSlot();
+//
+//                int[] armorSlots = {slot - 9, slot - 18, slot - 27, slot - 36}; // Boots, Leggings, Chestplate, Helmet slots in the inventory
+//                ItemStack item;
+//                ItemStack[] equippedItem = player.getEquipment().getArmorContents();
+//                for (int i = 0; i < armorSlots.length; i++) {
+//                    System.out.println("4");
+//
+//                    item = inventory.getItem(armorSlots[i]);
+//                    if (item != null && !(item.equals(equippedItem[i]))) {
+//                        System.out.println("Dupe detected!");
+//                    }
+//                }
+//            }
+//        }
+//        for (Button button : this.buttons) {
+//            Material buttonItem = button.getItem().getType();
+//            System.out.println("Found " + button.getItem().getItemMeta().getDisplayName());
+//            int tempCounter = 0;
+//            if (buttonItem == Material.LIME_DYE) {
+//                System.out.println("Found " + tempCounter++ + " Unequip button(s)");
+//                int slot = button.getSlot();
+//
+//                int[] armorSlots = {slot - 9, slot - 18, slot - 27, slot - 36}; // Boots, Leggings, Chestplate, Helmet slots in the inventory
+//                ItemStack item;
+//                ItemStack[] equippedItem = player.getEquipment().getArmorContents();
+//                for (int i = 0; i < armorSlots.length; i++) {
+//                    System.out.println("4");
+//
+//                    item = inventory.getItem(armorSlots[i]);
+//                    if (item != null && !(item.equals(equippedItem[i]))) {
+//                        System.out.println("Dupe detected!");
+//                    }
+//                }
+//            }
+//        }
+
 
     /**
      * Creates a basic button to close the GUI.
@@ -252,10 +331,19 @@ public class WardrobeGUI {
                 inventory.setItem(i, equip);
             }
 
-            player.getEquipment().setBoots(inventory.getItem(slot - 9));
-            player.getEquipment().setLeggings(inventory.getItem(slot - 18));
-            player.getEquipment().setChestplate(inventory.getItem(slot - 27));
-            player.getEquipment().setHelmet(inventory.getItem(slot - 36));
+            // Handle equipping
+            int[] armorSlots = {slot - 9, slot - 18, slot - 27, slot - 36}; // Boots, Leggings, Chestplate, Helmet slots in the inventory
+            ItemStack[] armor = new ItemStack[4];
+            for (int i = 0; i < armorSlots.length; i++) {
+
+                ItemStack item = inventory.getItem(armorSlots[i]);
+                if (!(item.getType().isBlock())) {
+                    armor[i] = inventory.getItem(armorSlots[i]);
+                } else {
+                    armor[i] = new ItemStack(Material.AIR);
+                }
+            }
+            player.getEquipment().setArmorContents(armor);
 
             // set slot clicked to say unequip
             inventory.setItem(slot, unequip);
