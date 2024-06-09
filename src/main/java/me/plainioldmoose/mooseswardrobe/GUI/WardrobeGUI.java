@@ -315,6 +315,23 @@ public class WardrobeGUI {
             // Handle equipping of armour
             int[] armorSlots = {slot - 9, slot - 18, slot - 27, slot - 36}; // Boots, Leggings, Chestplate, Helmet slots in the inventory
             ItemStack[] armor = new ItemStack[4];
+
+            // Handle item refunds if item is not equipped in wardrobe
+            ItemStack[] currentEquipment = player.getEquipment().getArmorContents();
+            for (ItemStack loadoutItem : currentEquipment) {
+                boolean returnItem = false;
+                if (loadoutItem != null && !(loadoutItem.getType().isBlock())) {
+                    for (ItemStack itemInWardrobe : inventory.getContents()) {
+                        if (!(loadoutItem.getType() == itemInWardrobe.getType())) {
+                            player.sendMessage(itemInWardrobe + " =/= " + loadoutItem);
+                            returnItem = true;
+                            break;
+                        }
+                    }
+                    player.getInventory().addItem(loadoutItem);
+                }
+            }
+
             for (int i = 0; i < armorSlots.length; i++) {
                 ItemStack item = inventory.getItem(armorSlots[i]);
                 if (!item.getType().isBlock()) {
