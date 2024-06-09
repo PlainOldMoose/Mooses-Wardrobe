@@ -1,0 +1,8 @@
+<project name="Mooses-Wardrobe-0.1-TESTING" default="Build">
+    <target name="MoosesWardrobe">
+        <jar jarfile="C:\Users\luque\OneDrive\Desktop\MCServ\plugins\${ant.project.name}.jar"
+             basedir="./target/classes/"
+             includes="**/*">
+        </jar>
+    </target>
+</project>
