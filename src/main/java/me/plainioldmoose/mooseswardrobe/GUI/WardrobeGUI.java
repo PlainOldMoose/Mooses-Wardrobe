@@ -109,17 +109,25 @@ public class WardrobeGUI {
      */
     private void dupeFailsafe(Player player, Inventory inventory) {
         ItemStack[] contents = inventory.getContents();
+        // Check each item until the active loadout button is found
         for (int i = 0; i < contents.length; i++) {
             ItemStack item = contents[i];
             if (item != null && item.getType() == Material.LIME_DYE) {
+                // once found, find armour sets using mod 9 offset
                 int[] armorSlots = {i - 9, i - 18, i - 27, i - 36};
                 ItemStack[] equippedArmor = player.getEquipment().getArmorContents();
+                // For each piece of armour saved, check if it matches what the player is wearing
                 for (int j = 0; j < armorSlots.length; j++) {
+                    // If mismatch is found, set armour slot to default pane
                     if (equippedArmor[j] == null && contents[armorSlots[j]] != null && !contents[armorSlots[j]].getType().isBlock()) {
-                        player.sendMessage(buttons.get(j).getItem().toString());
-                        inventory.setItem(armorSlots[j], buttons.get(armorSlots[j] + 9).getItem());
-                        ItemStack defaultEquipButton = createItemStack(Material.RED_DYE, ChatColor.GOLD + "§lStore a loadout first!");
-                        inventory.setItem(i, defaultEquipButton);
+                        inventory.setItem(armorSlots[j], buttons.get(armorSlots[j] + 9).getItem()); // this line fetches from the inital list of buttons used to initilize the GUI (i.e. the button in its default state)
+                        if (!columnHasArmour(inventory, i)) {
+                            ItemStack defaultEquipButton = createItemStack(Material.RED_DYE, ChatColor.GOLD + "§lStore a loadout first!");
+                            inventory.setItem(i, defaultEquipButton);
+                        } else {
+                            ItemStack unequip = createItemStack(Material.LIME_DYE, ChatColor.GREEN + "§lUnequip Loadout");
+                            inventory.setItem(i, unequip);
+                        }
                     }
                 }
             }
@@ -189,7 +197,7 @@ public class WardrobeGUI {
                         inventory.setItem(this.getSlot(), defaultPane);
 
                         // If last piece removed, set columns equip button to empty
-                        if (!columnHasArmour(player, this.getSlot())) {
+                        if (!columnHasArmour(inventory, this.getSlot())) {
                             ItemStack emptyLoadoutButton = createItemStack(Material.RED_DYE, ChatColor.GOLD + "§lStore a loadout first!");
                             inventory.setItem(36 + offset, emptyLoadoutButton);
                             return;
@@ -258,7 +266,7 @@ public class WardrobeGUI {
 
                 @Override
                 public void onClick(Player player) {
-                    if (!columnHasArmour(player, slot)) {
+                    if (!columnHasArmour(inventory, slot)) {
                         player.sendMessage("§f[§c§lWardrobe§f]§c You cannot select empty loadout!");
                     } else {
                         toggleEquipUnequip(player, inventory, slot);
@@ -268,13 +276,12 @@ public class WardrobeGUI {
         }
     }
 
-    private boolean columnHasArmour(Player player, int slot) {
+    private boolean columnHasArmour(Inventory inventory, int slot) {
         int column = slot % 9;
-        Inventory inventory = player.getOpenInventory().getTopInventory();
         int[] offsets = {0, 9, 18, 27};
-
         for (int offset : offsets) {
-            if (!inventory.getItem(column + offset).getType().isBlock()) {
+            ItemStack itemTypeInSlot = inventory.getItem(column + offset);
+            if (itemTypeInSlot != null && !itemTypeInSlot.getType().isBlock()) {
                 return true;
             }
         }
@@ -295,11 +302,10 @@ public class WardrobeGUI {
         final ItemStack unequip = createItemStack(Material.LIME_DYE, ChatColor.GREEN + "§lUnequip Loadout");
 
         ItemMeta currentMeta = inventory.getItem(slot).getItemMeta();
-        player.sendMessage(slot + "");
         if (currentMeta.getDisplayName().equals(ChatColor.RED + "§lEquip Loadout")) {
             // For each button, check if it's column has any armour, if true set button to equip, if false set button to empty
             for (int i = size - 18; i < size - 9; i++) {
-                if (columnHasArmour(player, i)) {
+                if (columnHasArmour(inventory, i)) {
                     inventory.setItem(i, equip);
                 } else {
                     inventory.setItem(i, empty);
