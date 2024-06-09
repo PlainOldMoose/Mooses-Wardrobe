@@ -1,6 +1,6 @@
-<project name="Mooses-Wardrobe-0.1-TESTING" default="Build">
-    <target name="MoosesWardrobe">
-        <jar jarfile="C:\Users\luque\OneDrive\Desktop\MCServ\plugins\${ant.project.name}.jar"
+<project name="Mooses-Wardrobe-1.0-TESTING" default="Build">
+    <target name="Mooses Wardrobe">
+        <jar jarfile="E:\Minecraft\TestServ\plugins\${ant.project.name}.jar"
              basedir="./target/classes/"
              includes="**/*">
         </jar>
