@@ -12,10 +12,8 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.metadata.FixedMetadataValue;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * The WardrobeGUI class represents a custom inventory GUI for the Wardrobe plugin.
@@ -115,12 +113,19 @@ public class WardrobeGUI {
             if (item != null && item.getType() == Material.LIME_DYE) {
                 // once found, find armour sets using mod 9 offset
                 int[] armorSlots = {i - 9, i - 18, i - 27, i - 36};
-                ItemStack[] equippedArmor = player.getEquipment().getArmorContents();
+                ItemStack[] equippedArmorList = player.getEquipment().getArmorContents();
                 // For each piece of armour saved, check if it matches what the player is wearing
                 for (int j = 0; j < armorSlots.length; j++) {
-                    // If mismatch is found, set armour slot to default pane
-                    if (equippedArmor[j] == null && contents[armorSlots[j]] != null && !contents[armorSlots[j]].getType().isBlock()) {
-                        inventory.setItem(armorSlots[j], buttons.get(armorSlots[j] + 9).getItem()); // this line fetches from the inital list of buttons used to initilize the GUI (i.e. the button in its default state)
+                    ItemStack equippedArmour = equippedArmorList[j];
+                    ItemStack correspondingSlot = contents[armorSlots[j]];
+                    int correspondingSlotIndex = armorSlots[j];
+                    if ((equippedArmour == null || !(equippedArmour.equals(correspondingSlot)))) { // If equipped piece is not null and does not equal
+                        if (equippedArmour == null) { // If not armour equipped in this slot
+                            inventory.setItem(correspondingSlotIndex, buttons.get(armorSlots[j] + 9).getItem()); // Sets correct index to blank pane
+                        } else { // Else slot has armour
+                            inventory.setItem(correspondingSlotIndex, equippedArmour); // Sets correct index to the armour found in the slot
+                        }
+
                         if (!columnHasArmour(inventory, i)) {
                             ItemStack defaultEquipButton = createItemStack(Material.RED_DYE, ChatColor.GOLD + "§lStore a loadout first!");
                             inventory.setItem(i, defaultEquipButton);
@@ -316,19 +321,25 @@ public class WardrobeGUI {
             int[] armorSlots = {slot - 9, slot - 18, slot - 27, slot - 36}; // Boots, Leggings, Chestplate, Helmet slots in the inventory
             ItemStack[] armor = new ItemStack[4];
 
+            /**
+             * if find item already in wardrobe > don't return
+             * if item not in wardrobe > return 1x item
+             *
+             */
+
             // Handle item refunds if item is not equipped in wardrobe
             ItemStack[] currentEquipment = player.getEquipment().getArmorContents();
-            for (ItemStack loadoutItem : currentEquipment) {
-                boolean returnItem = false;
-                if (loadoutItem != null && !(loadoutItem.getType().isBlock())) {
-                    for (ItemStack itemInWardrobe : inventory.getContents()) {
-                        if (!(loadoutItem.getType() == itemInWardrobe.getType())) {
-                            player.sendMessage(itemInWardrobe + " =/= " + loadoutItem);
-                            returnItem = true;
-                            break;
-                        }
-                    }
-                    player.getInventory().addItem(loadoutItem);
+            ItemStack[] currentWardrobe = inventory.getContents();
+
+            // Filter out nulls from currentWardrobe and create a set for fast lookups
+            Set<ItemStack> wardrobeSet = Arrays.stream(currentWardrobe).filter(Objects::nonNull).collect(Collectors.toSet());
+
+            for (ItemStack armourPiece : currentEquipment) {
+                if (armourPiece != null && !wardrobeSet.contains(armourPiece)) {
+                    // Add 1x of the item to the player's inventory
+                    ItemStack singleItem = armourPiece.clone();
+                    singleItem.setAmount(1);
+                    player.getInventory().addItem(singleItem);
                 }
             }
 
