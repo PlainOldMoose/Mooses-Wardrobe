@@ -4,6 +4,7 @@ import me.plainioldmoose.mooseswardrobe.Data.WardrobeData;
 import me.plainioldmoose.mooseswardrobe.Wardrobe;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.EquipmentSlot;
@@ -339,7 +340,10 @@ public class WardrobeGUI {
                     // Add 1x of the item to the player's inventory
                     ItemStack singleItem = armourPiece.clone();
                     singleItem.setAmount(1);
-                    player.getInventory().addItem(singleItem);
+                    if (!player.getInventory().addItem(singleItem).isEmpty()) {
+                        Location playerLocation = player.getLocation();
+                        player.getWorld().dropItem(playerLocation, singleItem);
+                    }
                 }
             }
 
