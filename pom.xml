@@ -6,10 +6,10 @@
 
     <groupId>me.plainioldmoose</groupId>
     <artifactId>Mooses-Wardrobe</artifactId>
-    <version>0.1</version>
+    <version>1.0</version>
     <packaging>jar</packaging>
 
-    <name>MoosesWardrobe</name>
+    <name>Mooses Wardrobe</name>
 
     <properties>
         <java.version>1.8</java.version>
