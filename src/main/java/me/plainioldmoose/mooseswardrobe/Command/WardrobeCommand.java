@@ -1,6 +1,7 @@
 package me.plainioldmoose.mooseswardrobe.Command;
 
 import me.plainioldmoose.mooseswardrobe.GUI.WardrobeGUI;
+import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -10,7 +11,7 @@ import org.bukkit.entity.Player;
  * The WardrobeCommand class handles the execution of the wardrobe command.
  * When a player uses this command, it opens their wardrobe GUI.
  */
-public class WardrobeCommand implements CommandExecutor {
+public final class WardrobeCommand implements CommandExecutor {
 
     /**
      * Executes the given command, returning its success.
@@ -28,14 +29,41 @@ public class WardrobeCommand implements CommandExecutor {
             sender.sendMessage("Only players can use this command!"); // Inform that only players can use the command
             return true;
         }
-
         Player player = (Player) sender; // Cast the sender to a player
 
         // If no arguments are provided, display the wardrobe GUI to the player
         if (args.length == 0) {
+            if (!player.hasPermission("wardrobe.open")) {
+                player.sendMessage("§f[§c§lWardrobe§f]§c You do not have permission!");
+                return true;
+            }
             new WardrobeGUI().displayTo(player);
+        } else if (args.length == 1) {
+            if (!player.hasPermission("wardrobe.admin")) {
+                player.sendMessage("§f[§c§lWardrobe§f]§c You do not have permission!");
+                return true;
+            }
+            Player playerArg = Bukkit.getPlayer(args[0]);
+            if (playerArg != null) {
+                new WardrobeGUI().displayTo(playerArg);
+                return true;
+            }
+            player.sendMessage("§f[§c§lWardrobe§f]§c Player does not exist!");
+            return true;
+        } else {
+            player.sendMessage("§f[§c§lWardrobe§f]§c Unknown command!");
         }
 
         return true; // Indicate that the command was successfully executed
     }
+
+//    @Override
+//    public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
+//
+//
+//        if (args.length == 1)
+//            return Arrays.asList("name");
+//
+//        return new ArrayList<>(); // null = all player names
+//    }
 }
