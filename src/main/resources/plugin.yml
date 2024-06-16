@@ -9,6 +9,27 @@ commands:
     aliases: [ wr ]
     permission: wardrobe.open
     permission-message: "You do not have permission to open a wardrobe"
-  permissions:
-    wardrobe.open:
-      default: op
+permissions:
+  wardrobe.open:
+    default: true
+  wardrobe.admin:
+    default: op
+  wardrobe.use.slot1:
+    default: op
+  wardrobe.use.slot2:
+    default: op
+  wardrobe.use.slot3:
+    default: op
+  wardrobe.use.slot4:
+    default: op
+  wardrobe.use.slot5:
+    default: op
+  wardrobe.use.slot6:
+    default: op
+  wardrobe.use.slot7:
+    default: op
+  wardrobe.use.slot8:
+    default: op
+  wardrobe.use.slot9:
+    default: op
+
