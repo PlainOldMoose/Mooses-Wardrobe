@@ -1,10 +1,11 @@
 package me.plainioldmoose.mooseswardrobe.GUI;
 
+import me.plainioldmoose.mooseswardrobe.Data.WardrobeData;
 import me.plainioldmoose.mooseswardrobe.Wardrobe;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
-import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.Inventory;
@@ -12,10 +13,11 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.metadata.FixedMetadataValue;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
-// TODO - Fix bug where equipping loadout a containing the same items as the player equipment (not stored in wardrobe) does not refund correct item
 // TODO - Implement live updating permissions / wardrobe slots
 
 /**
@@ -74,30 +76,31 @@ public class WardrobeGUI {
         // Create and add buttons to the inventory
         createBackgroundTiles();
         createGrayPaneButtons();
-        createArmourSlots(player);
         createEquipUnequipButtons(inventory);
         createCloseButton();
+
 
         // Render all buttons in the inventory
         for (final Button button : this.buttons) {
             inventory.setItem(button.getSlot(), button.getItem());
         }
 
-        // Ensure no leftover metadata interferes
-        if (player.hasMetadata("WardrobeGUI")) {
-            player.closeInventory();
-        }
+        createArmourSlots(inventory, player);
 
         // Load and set saved inventory contents if they exist
-//        UUID playerUUID = player.getUniqueId();
-//        Map<UUID, ItemStack[]> savedInventories = WardrobeData.getInstance().getSavedInventories();
-//        if (savedInventories.containsKey(playerUUID)) {
-//            inventory.setContents(savedInventories.get(playerUUID));
-//        }
+        UUID playerUUID = player.getUniqueId();
+        Map<UUID, ItemStack[]> savedInventories = WardrobeData.getInstance().getSavedInventories();
+        if (savedInventories.containsKey(playerUUID)) {
+            inventory.setContents(savedInventories.get(playerUUID));
+        }
 
         // Check for item duplication issues
         dupeFailsafe(player, inventory);
 
+        // Ensure no leftover metadata interferes
+        if (player.hasMetadata("WardrobeGUI")) {
+            player.closeInventory();
+        }
 
         // Set metadata to indicate the wardrobe GUI is open and display it
         player.setMetadata("WardrobeGUI", new FixedMetadataValue(Wardrobe.getInstance(), this));
@@ -143,7 +146,7 @@ public class WardrobeGUI {
                     int correspondingSlotIndex = armorSlots[j];
                     if ((equippedArmour == null || !(equippedArmour.equals(correspondingSlot)))) { // If equipped piece is not null and does not equal
                         if (equippedArmour == null) { // If not armour equipped in this slot
-                            inventory.setItem(correspondingSlotIndex, buttons.get(armorSlots[j] + 9).getItem()); // Sets correct index to blank pane
+                            inventory.setItem(correspondingSlotIndex, createDefaultPane(armorSlots[j])); // Sets correct index to blank pane
                         } else { // Else slot has armour
                             inventory.setItem(correspondingSlotIndex, equippedArmour); // Sets correct index to the armour found in the slot
                         }
@@ -182,18 +185,17 @@ public class WardrobeGUI {
     /**
      * Creates the armor slot buttons in the wardrobe GUI.
      */
-    private void createArmourSlots(Player player) {
-        Map<Integer, String> loreMap = Map.of(0, "§lHelmet", 1, "§lChestplate", 2, "§lLeggings", 3, "§lBoots");
+    private void createArmourSlots(Inventory inventory, Player player) {
 
-        Map<Integer, Material> materialMap = Map.of(0, Material.ORANGE_STAINED_GLASS_PANE, 1, Material.YELLOW_STAINED_GLASS_PANE, 2, Material.LIME_STAINED_GLASS_PANE, 3, Material.GREEN_STAINED_GLASS_PANE, 4, Material.LIGHT_BLUE_STAINED_GLASS_PANE, 5, Material.CYAN_STAINED_GLASS_PANE, 6, Material.BLUE_STAINED_GLASS_PANE, 7, Material.PURPLE_STAINED_GLASS_PANE, 8, Material.MAGENTA_STAINED_GLASS_PANE);
-
-        int endSlot = 5;
-        if (player.hasPermission("wardrobe.use.slot1")) {
-            endSlot = 2;
-        } else if (player.hasPermission("wardrobe.use.slot2")) {
-            endSlot = 3;
+        // Checks how many slots to create based on player permissions
+        int endSlot = -1;
+        for (int i = 1; i <= 9; i++) {
+            if (player.hasPermission("wardrobe.use.slot" + i)) {
+                endSlot = i;
+            }
         }
 
+        // Creates slots based on how many are needed
         for (int i = 0; i < endSlot; i++) {
             for (int j = 0; j < 35; j += 9) {
                 int column = (i + j) % 9;
@@ -201,70 +203,107 @@ public class WardrobeGUI {
                 this.buttons.add(new Button(i + j) {
                     @Override
                     public ItemStack getItem() {
-                        return createItemStack(materialMap.get(column), ChatColor.GOLD + "§l" + loreMap.get(row));
+                        return createDefaultPane(this.getSlot());
                     }
 
                     @Override
                     public void onClick(Player player) {
-                        /*This method is quite messy however I don't see a better way of abstracting it, this is the bread and butter of how inserting / removing items into the GUI is handled.
-                         *  Each background tile is actually a button which can be clicked under certain criteria to perform certain tasks on the GUI. e.g. clicking an empty slot with a piece of armour will
-                         *  update that buttons icon to the item clicked and remove it from the player's cursor.
-                         */
-
-                        // Get the item currently on the player's cursor
+                        // Get necessary items and inventory
                         ItemStack itemOnCursor = player.getItemOnCursor();
                         Inventory inventory = player.getOpenInventory().getTopInventory();
-                        ItemStack currentSlotItem = inventory.getItem(this.getSlot());
+                        int slot = this.getSlot();
+                        ItemStack currentSlotItem = inventory.getItem(slot);
 
-                        // Disable removing while active
-                        int offset = this.getSlot() % 9; // Find column which is has been clicked
-                        if (inventory.getItem(36 + offset) != null && inventory.getItem(36 + offset).getType() == Material.LIME_DYE && this.getSlot() < 36) { // if the equip button for this column is active, and the slot clicked is one of the armour slots
+                        // Check if editing an active loadout
+                        if (isEditingActiveLoadout(inventory, slot)) {
                             player.sendMessage("§f[§c§lWardrobe§f]§c You cannot edit active loadout!");
+                            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
                             return;
                         }
 
                         // Handle removing items from the GUI
                         if (itemOnCursor.getType().isAir() && currentSlotItem.getType().getEquipmentSlot() != EquipmentSlot.HAND) {
-                            // Calculate default pane for this slot
-                            ItemStack defaultPane = createItemStack(materialMap.get(column), ChatColor.GOLD + loreMap.get(row));
-                            // Set cursor to current slot, then set slot to default background pane
-                            player.setItemOnCursor(currentSlotItem);
-                            inventory.setItem(this.getSlot(), defaultPane);
-
-                            // If last piece removed, set columns equip button to empty
-                            if (!columnHasArmour(inventory, this.getSlot())) {
-                                ItemStack emptyLoadoutButton = createItemStack(Material.RED_DYE, ChatColor.GOLD + "§lStore a loadout first!");
-                                inventory.setItem(36 + offset, emptyLoadoutButton);
-                                return;
-                            }
+                            handleItemRemoval(player, inventory, slot);
                         }
 
-
                         // Handle inserting items into the GUI
+                        handleItemInsertion(player, inventory, itemOnCursor, currentSlotItem, slot);
+                    }
+
+                    private boolean isEditingActiveLoadout(Inventory inventory, int slot) {
+                        int offset = slot % 9;
+                        return inventory.getItem(36 + offset) != null &&
+                                inventory.getItem(36 + offset).getType() == Material.LIME_DYE &&
+                                slot < 36;
+                    }
+
+                    private void handleItemRemoval(Player player, Inventory inventory, int slot) {
+                        int offset = slot % 9;
+                        ItemStack defaultPane = createDefaultPane(slot);
+                        ItemStack currentSlotItem = inventory.getItem(slot);
+
+                        player.setItemOnCursor(currentSlotItem);
+                        inventory.setItem(slot, defaultPane);
+
+                        if (!columnHasArmour(inventory, slot)) {
+                            ItemStack emptyLoadoutButton = createItemStack(Material.RED_DYE, ChatColor.GOLD + "§lStore a loadout first!");
+                            inventory.setItem(36 + offset, emptyLoadoutButton);
+                        }
+                    }
+
+                    private void handleItemInsertion(Player player, Inventory inventory, ItemStack itemOnCursor, ItemStack currentSlotItem, int slot) {
                         String itemName = itemOnCursor.getType().toString().toLowerCase();
                         String buttonName = this.getItem().getItemMeta().getDisplayName().toLowerCase().substring(4);
 
-                        // If cursor has item
-                        if (itemOnCursor.getType() != Material.AIR) {
-                            // If item matches slot
-                            if (itemName.contains(buttonName)) {
-                                if (!(currentSlotItem.getType().isBlock())) { // If existing slot is not a pane
-                                    // Place cursor item in slot and set cursor to original slot item
-                                    ItemStack itemToReturn = currentSlotItem;
-                                    inventory.setItem(this.getSlot(), itemOnCursor);
-                                    player.setItemOnCursor(itemToReturn);
-                                } else { // Else if it is pane, replace pane with item
-                                    inventory.setItem(this.getSlot(), itemOnCursor);
-                                    player.setItemOnCursor(null);
-                                }
-                                ItemStack equipLoadoutButton = createItemStack(Material.GRAY_DYE, ChatColor.RED + "§lEquip Loadout");
-                                inventory.setItem(36 + offset, equipLoadoutButton);
+                        if (!itemOnCursor.getType().isAir() && itemName.contains(buttonName)) {
+                            if (!(currentSlotItem.getType().isBlock())) {
+                                ItemStack itemToReturn = currentSlotItem;
+                                inventory.setItem(slot, itemOnCursor);
+                                player.setItemOnCursor(itemToReturn);
+                            } else {
+                                inventory.setItem(slot, itemOnCursor);
+                                player.setItemOnCursor(null);
                             }
+                            int offset = slot % 9;
+                            ItemStack equipLoadoutButton = createItemStack(Material.GRAY_DYE, ChatColor.RED + "§lEquip Loadout");
+                            inventory.setItem(36 + offset, equipLoadoutButton);
                         }
                     }
                 });
             }
         }
+        for (final Button button : this.buttons) {
+            inventory.setItem(button.getSlot(), button.getItem());
+        }
+    }
+
+    /**
+     * Creates a default pane item for a given slot.
+     *
+     * @param slot The slot to create the pane for.
+     * @return The created ItemStack.
+     */
+    private ItemStack createDefaultPane(int slot) {
+        Map<Integer, String> loreMap = Map.of(
+                0, "§lHelmet",
+                1, "§lChestplate",
+                2, "§lLeggings",
+                3, "§lBoots");
+
+        Map<Integer, Material> materialMap = Map.of(
+                0, Material.ORANGE_STAINED_GLASS_PANE,
+                1, Material.YELLOW_STAINED_GLASS_PANE,
+                2, Material.LIME_STAINED_GLASS_PANE,
+                3, Material.GREEN_STAINED_GLASS_PANE,
+                4, Material.LIGHT_BLUE_STAINED_GLASS_PANE,
+                5, Material.CYAN_STAINED_GLASS_PANE,
+                6, Material.BLUE_STAINED_GLASS_PANE,
+                7, Material.PURPLE_STAINED_GLASS_PANE,
+                8, Material.MAGENTA_STAINED_GLASS_PANE);
+
+        int column = slot % 9; // assuming column is derived from slot position
+        int row = slot / 9;
+        return createItemStack(materialMap.get(column), ChatColor.GOLD + loreMap.get(row));
     }
 
     /**
@@ -304,6 +343,7 @@ public class WardrobeGUI {
                 public void onClick(Player player) {
                     if (!columnHasArmour(inventory, slot)) {
                         player.sendMessage("§f[§c§lWardrobe§f]§c You cannot select empty loadout!");
+                        player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
                     } else {
                         toggleEquipUnequip(player, inventory, slot);
                     }
@@ -312,6 +352,13 @@ public class WardrobeGUI {
         }
     }
 
+    /**
+     * Checks if a given column in the inventory contains armor.
+     *
+     * @param inventory The inventory to check.
+     * @param slot      The slot to check.
+     * @return True if the column contains armor, false otherwise.
+     */
     private boolean columnHasArmour(Inventory inventory, int slot) {
         int column = slot % 9;
         int[] offsets = {0, 9, 18, 27};
@@ -322,6 +369,25 @@ public class WardrobeGUI {
             }
         }
         return false;
+    }
+
+
+    /**
+     * Determines if a refund of the currently equipped armor is required by checking for the presence of a "LIME_DYE" item
+     * in the row containing the specified slot. If such an item is found, no refund is needed.
+     *
+     * @param inventory The inventory to check for the presence of the "LIME_DYE" item.
+     * @param slot      The slot in the inventory whose row is being checked.
+     * @return true if a refund is required, false otherwise.
+     */
+    private boolean equipmentRefundRequired(Inventory inventory, int slot) {
+        int row = slot / 9;
+        for (int x = row * 9; x < row * 9 + 9; x++) {
+            if (inventory.getItem(x).getType() == Material.LIME_DYE) {
+                return false;
+            }
+        }
+        return true;
     }
 
 
@@ -337,60 +403,80 @@ public class WardrobeGUI {
         final ItemStack equip = createItemStack(Material.GRAY_DYE, ChatColor.RED + "§lEquip Loadout");
         final ItemStack unequip = createItemStack(Material.LIME_DYE, ChatColor.GREEN + "§lUnequip Loadout");
 
-        ItemMeta currentMeta = inventory.getItem(slot).getItemMeta();
+        ItemStack currentItem = inventory.getItem(slot);
+        if (currentItem == null || !currentItem.hasItemMeta()) {
+            return;
+        }
+
+        ItemMeta currentMeta = currentItem.getItemMeta();
         if (currentMeta.getDisplayName().equals(ChatColor.RED + "§lEquip Loadout")) {
-            // For each button, check if it's column has any armour, if true set button to equip, if false set button to empty
-            for (int i = size - 18; i < size - 9; i++) {
-                if (columnHasArmour(inventory, i)) {
-                    inventory.setItem(i, equip);
-                } else {
-                    inventory.setItem(i, empty);
-                }
+            if (equipmentRefundRequired(inventory, slot)) {
+                refundEquipment(player);
             }
 
-            // Handle equipping of armour
-            int[] armorSlots = {slot - 9, slot - 18, slot - 27, slot - 36}; // Boots, Leggings, Chestplate, Helmet slots in the inventory
-            ItemStack[] armor = new ItemStack[4];
-
-            /**
-             * if find item already in wardrobe > don't return
-             * if item not in wardrobe > return 1x item
-             *
-             */
-
-            // Handle item refunds if item is not equipped in wardrobe
-            ItemStack[] currentEquipment = player.getEquipment().getArmorContents();
-            ItemStack[] currentWardrobe = inventory.getContents();
-
-            // Filter out nulls from currentWardrobe and create a set for fast lookups
-            Set<ItemStack> wardrobeSet = Arrays.stream(currentWardrobe).filter(Objects::nonNull).collect(Collectors.toSet());
-
-            for (ItemStack armourPiece : currentEquipment) {
-                if (armourPiece != null && !wardrobeSet.contains(armourPiece)) {
-                    // Add 1x of the item to the player's inventory
-                    ItemStack singleItem = armourPiece.clone();
-                    singleItem.setAmount(1);
-                    if (!player.getInventory().addItem(singleItem).isEmpty()) {
-                        Location playerLocation = player.getLocation();
-                        player.getWorld().dropItem(playerLocation, singleItem);
-                    }
-                }
-            }
-
-            for (int i = 0; i < armorSlots.length; i++) {
-                ItemStack item = inventory.getItem(armorSlots[i]);
-                if (!item.getType().isBlock()) {
-                    armor[i] = item;
-                } else {
-                    armor[i] = new ItemStack(Material.AIR);
-                }
-            }
-            player.getEquipment().setArmorContents(armor);
-            inventory.setItem(slot, unequip);
+            updateLoadoutButtons(player, inventory, slot, empty, equip);
+            equipArmor(player, inventory, slot);
         } else {
             player.getEquipment().setArmorContents(new ItemStack[4]);
             inventory.setItem(slot, equip);
         }
+    }
+
+    /**
+     * Refunds the player's currently equipped armor by attempting to place it back into their inventory.
+     * If the inventory is full, the armor pieces are dropped at the player's location.
+     *
+     * @param player The player whose equipment is being refunded.
+     */
+    private void refundEquipment(Player player) {
+        for (ItemStack itemToReturn : player.getEquipment().getArmorContents()) {
+            if (itemToReturn != null) {
+                if (!player.getInventory().addItem(itemToReturn).isEmpty()) {
+                    player.getWorld().dropItem(player.getLocation(), itemToReturn);
+                }
+            }
+        }
+        player.getEquipment().setArmorContents(new ItemStack[4]);
+    }
+
+    /**
+     * Updates the loadout buttons in the inventory based on whether each column has armor.
+     *
+     * @param player    The player whose loadout buttons are being updated.
+     * @param inventory The inventory containing the loadout buttons.
+     * @param slot      The slot in the inventory that indicates the active loadout.
+     * @param empty     The ItemStack representing an empty loadout button.
+     * @param equip     The ItemStack representing an equip loadout button.
+     */
+    private void updateLoadoutButtons(Player player, Inventory inventory, int slot, ItemStack empty, ItemStack equip) {
+        for (int i = inventory.getSize() - 18; i < inventory.getSize() - 9; i++) {
+            if (columnHasArmour(inventory, i)) {
+                inventory.setItem(i, equip);
+            } else {
+                inventory.setItem(i, empty);
+            }
+        }
+    }
+
+    /**
+     * Equips the armor from the specified slots in the inventory to the player's armor slots.
+     *
+     * @param player    The player who is equipping the armor.
+     * @param inventory The inventory from which the armor is being equipped.
+     * @param slot      The slot in the inventory that indicates the active loadout.
+     */
+
+    private void equipArmor(Player player, Inventory inventory, int slot) {
+        int[] armorSlots = {slot - 9, slot - 2 * 9, slot - 3 * 9, slot - 4 * 9};
+        ItemStack[] armor = new ItemStack[4];
+
+        for (int i = 0; i < armorSlots.length; i++) {
+            ItemStack item = inventory.getItem(armorSlots[i]);
+            armor[i] = (item != null && !item.getType().isBlock()) ? item : new ItemStack(Material.AIR);
+        }
+
+        player.getEquipment().setArmorContents(armor);
+        inventory.setItem(slot, createItemStack(Material.LIME_DYE, ChatColor.GREEN + "§lUnequip Loadout"));
     }
 
     /**
