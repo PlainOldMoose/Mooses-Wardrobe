@@ -48,9 +48,6 @@ public class WardrobeData {
     }
 
     public void reset(Player player) {
-        player.sendMessage("before : " + savedInventories.toString());
-        player.sendMessage("Resetting " + player.getName() + "'s wardrobe!");
-
         // Remove the player's data from the savedInventories map
         savedInventories.remove(player.getUniqueId());
 
@@ -64,7 +61,6 @@ public class WardrobeData {
             e.printStackTrace();
         }
         saveInventories();
-        player.sendMessage("is now : " + savedInventories.toString());
     }
 
     /**
