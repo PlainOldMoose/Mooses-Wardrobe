@@ -70,6 +70,7 @@ public class WardrobeGUI {
      * @param player The player to display the GUI to.
      */
     public void displayTo(Player player) {
+        buttons.clear();
         // Create the inventory with the specified size and title
         final Inventory inventory = Bukkit.createInventory(player, this.size, ChatColor.translateAlternateColorCodes('&', this.title));
 
@@ -79,13 +80,13 @@ public class WardrobeGUI {
         createEquipUnequipButtons(inventory);
         createCloseButton();
 
+        createArmourSlots(inventory, player);
+
 
         // Render all buttons in the inventory
         for (final Button button : this.buttons) {
             inventory.setItem(button.getSlot(), button.getItem());
         }
-
-        createArmourSlots(inventory, player);
 
         // Load and set saved inventory contents if they exist
         UUID playerUUID = player.getUniqueId();
@@ -94,8 +95,10 @@ public class WardrobeGUI {
             inventory.setContents(savedInventories.get(playerUUID));
         }
 
-        // Check for item duplication issues
+        updateButtonsOnPermissions(player, inventory);
         dupeFailsafe(player, inventory);
+        // Check for item duplication issues
+
 
         // Ensure no leftover metadata interferes
         if (player.hasMetadata("WardrobeGUI")) {
@@ -117,12 +120,74 @@ public class WardrobeGUI {
 
                 @Override
                 public void onClick(Player player) {
-                    // Gray pane buttons have no functionality
+                    int loadoutColumn = this.getSlot() % 9 + 1;
+                    if (!(player.hasPermission("wardrobe.use.slot" + loadoutColumn))) {
+                        player.sendMessage("§f[§c§lWardrobe§f]§c You do not have permission this loadout!");
+                    }
                 }
             });
         }
     }
 
+    private void updateButtonsOnPermissions(Player player, Inventory inventory) {
+        final ItemStack empty = createItemStack(Material.RED_DYE, ChatColor.GOLD + "§lStore a loadout first!");
+        final ItemStack noPermissionPane = createItemStack(Material.GRAY_STAINED_GLASS_PANE, ChatColor.RED + "");
+        final ItemStack defaultEquipButton = createItemStack(Material.END_CRYSTAL, ChatColor.GOLD + "§cYou don't have permission for this slot!");
+
+        for (int i = 0; i < 9; i++) {
+            boolean hasPermission = player.hasPermission("wardrobe.use.slot" + (i + 1));
+            boolean hasArmour = columnHasArmour(inventory, i);
+
+            if (!hasPermission) {
+                handleNoPermission(player, inventory, i, hasArmour, noPermissionPane, defaultEquipButton);
+            } else {
+                handleHasPermission(inventory, i, hasArmour, empty);
+            }
+        }
+    }
+
+    private void handleNoPermission(Player player, Inventory inventory, int column, boolean hasArmour, ItemStack noPermissionPane, ItemStack defaultEquipButton) {
+        if (hasArmour) {
+            for (int c = column; c < 36; c += 9) {
+                ItemStack item = inventory.getItem(c);
+                if (item != null) {
+                    if (item.getType().isBlock()) {
+                        inventory.setItem(c, noPermissionPane);
+                    } else {
+                        refundItem(player, item);
+                        inventory.setItem(c, noPermissionPane);
+                    }
+                }
+            }
+        } else {
+            for (int j = 0; j < 4; j++) {
+                inventory.setItem(column + j * 9, noPermissionPane);
+            }
+        }
+        inventory.setItem(column + 36, defaultEquipButton);
+    }
+
+    private void handleHasPermission(Inventory inventory, int column, boolean hasArmour, ItemStack empty) {
+        if (!hasArmour) {
+            for (int j = 0; j < 4; j++) {
+                inventory.setItem(column + j * 9, createDefaultPane(column + j * 9));
+            }
+            inventory.setItem(column + 36, empty);
+        } else {
+            for (int x = 0; x < 36; x += 9) {
+                ItemStack item = inventory.getItem(column + x);
+                if (item != null && item.getType().isBlock()) {
+                    inventory.setItem(column + x, createDefaultPane(column + x));
+                }
+            }
+        }
+    }
+
+    private void refundItem(Player player, ItemStack item) {
+        if (!player.getInventory().addItem(item).isEmpty()) {
+            player.getWorld().dropItem(player.getLocation(), item);
+        }
+    }
 
     /**
      * Prevents item duplication by ensuring that armor pieces are properly handled.
@@ -186,17 +251,17 @@ public class WardrobeGUI {
      * Creates the armor slot buttons in the wardrobe GUI.
      */
     private void createArmourSlots(Inventory inventory, Player player) {
+        List<Integer> allowedSlots = new ArrayList<>();
 
-        // Checks how many slots to create based on player permissions
-        int endSlot = -1;
+        // Gather all allowed slots based on player permissions
         for (int i = 1; i <= 9; i++) {
             if (player.hasPermission("wardrobe.use.slot" + i)) {
-                endSlot = i;
+                allowedSlots.add(i - 1); // Adjusting to zero-based index for inventory slots
             }
         }
 
-        // Creates slots based on how many are needed
-        for (int i = 0; i < endSlot; i++) {
+        // Create slots based on the permissions
+        for (int i : allowedSlots) {
             for (int j = 0; j < 35; j += 9) {
                 int column = (i + j) % 9;
                 int row = (i + j) / 9;
@@ -232,9 +297,7 @@ public class WardrobeGUI {
 
                     private boolean isEditingActiveLoadout(Inventory inventory, int slot) {
                         int offset = slot % 9;
-                        return inventory.getItem(36 + offset) != null &&
-                                inventory.getItem(36 + offset).getType() == Material.LIME_DYE &&
-                                slot < 36;
+                        return inventory.getItem(36 + offset) != null && inventory.getItem(36 + offset).getType() == Material.LIME_DYE && slot < 36;
                     }
 
                     private void handleItemRemoval(Player player, Inventory inventory, int slot) {
@@ -284,22 +347,9 @@ public class WardrobeGUI {
      * @return The created ItemStack.
      */
     private ItemStack createDefaultPane(int slot) {
-        Map<Integer, String> loreMap = Map.of(
-                0, "§lHelmet",
-                1, "§lChestplate",
-                2, "§lLeggings",
-                3, "§lBoots");
+        Map<Integer, String> loreMap = Map.of(0, "§lHelmet", 1, "§lChestplate", 2, "§lLeggings", 3, "§lBoots");
 
-        Map<Integer, Material> materialMap = Map.of(
-                0, Material.ORANGE_STAINED_GLASS_PANE,
-                1, Material.YELLOW_STAINED_GLASS_PANE,
-                2, Material.LIME_STAINED_GLASS_PANE,
-                3, Material.GREEN_STAINED_GLASS_PANE,
-                4, Material.LIGHT_BLUE_STAINED_GLASS_PANE,
-                5, Material.CYAN_STAINED_GLASS_PANE,
-                6, Material.BLUE_STAINED_GLASS_PANE,
-                7, Material.PURPLE_STAINED_GLASS_PANE,
-                8, Material.MAGENTA_STAINED_GLASS_PANE);
+        Map<Integer, Material> materialMap = Map.of(0, Material.ORANGE_STAINED_GLASS_PANE, 1, Material.YELLOW_STAINED_GLASS_PANE, 2, Material.LIME_STAINED_GLASS_PANE, 3, Material.GREEN_STAINED_GLASS_PANE, 4, Material.LIGHT_BLUE_STAINED_GLASS_PANE, 5, Material.CYAN_STAINED_GLASS_PANE, 6, Material.BLUE_STAINED_GLASS_PANE, 7, Material.PURPLE_STAINED_GLASS_PANE, 8, Material.MAGENTA_STAINED_GLASS_PANE);
 
         int column = slot % 9; // assuming column is derived from slot position
         int row = slot / 9;
@@ -341,12 +391,18 @@ public class WardrobeGUI {
 
                 @Override
                 public void onClick(Player player) {
-                    if (!columnHasArmour(inventory, slot)) {
-                        player.sendMessage("§f[§c§lWardrobe§f]§c You cannot select empty loadout!");
-                        player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
-                    } else {
-                        toggleEquipUnequip(player, inventory, slot);
+                    int loadoutColumn = this.getSlot() % 9 + 1;
+                    if (player.hasPermission("wardrobe.use.slot" + loadoutColumn)) {
+                        if (!columnHasArmour(inventory, slot)) {
+                            player.sendMessage("§f[§c§lWardrobe§f]§c You cannot select empty loadout!");
+                            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
+                            return;
+                        } else {
+                            toggleEquipUnequip(player, inventory, slot);
+                            return;
+                        }
                     }
+                    return;
                 }
             });
         }
@@ -420,6 +476,7 @@ public class WardrobeGUI {
             player.getEquipment().setArmorContents(new ItemStack[4]);
             inventory.setItem(slot, equip);
         }
+
     }
 
     /**
@@ -450,8 +507,10 @@ public class WardrobeGUI {
      */
     private void updateLoadoutButtons(Player player, Inventory inventory, int slot, ItemStack empty, ItemStack equip) {
         for (int i = inventory.getSize() - 18; i < inventory.getSize() - 9; i++) {
-            if (columnHasArmour(inventory, i)) {
+            if (columnHasArmour(inventory, i) && player.hasPermission("wardrobe.use.slot" + (i % 9 + 1))) {
                 inventory.setItem(i, equip);
+            } else if (!player.hasPermission("wardrobe.use.slot" + (i % 9 + 1))) {
+                inventory.setItem(i, createItemStack(Material.END_CRYSTAL, ChatColor.GOLD + "§cYou don't have permission for this slot!"));
             } else {
                 inventory.setItem(i, empty);
             }
