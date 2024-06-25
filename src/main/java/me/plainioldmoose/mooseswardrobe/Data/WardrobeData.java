@@ -3,6 +3,7 @@ package me.plainioldmoose.mooseswardrobe.Data;
 import me.plainioldmoose.mooseswardrobe.Wardrobe;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
 import java.io.File;
@@ -44,6 +45,26 @@ public class WardrobeData {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public void reset(Player player) {
+        player.sendMessage("before : " + savedInventories.toString());
+        player.sendMessage("Resetting " + player.getName() + "'s wardrobe!");
+
+        // Remove the player's data from the savedInventories map
+        savedInventories.remove(player.getUniqueId());
+
+        // Remove the player's data from the dataConfig
+        dataConfig.set(player.getUniqueId().toString(), null);
+
+        // Save the updated dataConfig to the dataFile
+        try {
+            dataConfig.save(dataFile);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        saveInventories();
+        player.sendMessage("is now : " + savedInventories.toString());
     }
 
     /**
