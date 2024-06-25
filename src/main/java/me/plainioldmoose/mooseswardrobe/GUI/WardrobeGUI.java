@@ -130,52 +130,69 @@ public class WardrobeGUI {
     }
 
     private void updateButtonsOnPermissions(Player player, Inventory inventory) {
+        // Define ItemStacks for reusable items
         final ItemStack empty = createItemStack(Material.RED_DYE, ChatColor.GOLD + "§lStore a loadout first!");
         final ItemStack noPermissionPane = createItemStack(Material.GRAY_STAINED_GLASS_PANE, ChatColor.RED + "");
         final ItemStack defaultEquipButton = createItemStack(Material.END_CRYSTAL, ChatColor.GOLD + "§cYou don't have permission for this slot!");
 
+        // Iterate through each column (0 to 8)
         for (int i = 0; i < 9; i++) {
             boolean hasPermission = player.hasPermission("wardrobe.use.slot" + (i + 1));
             boolean hasArmour = columnHasArmour(inventory, i);
 
+            // Handle case where player does not have permission for current column
             if (!hasPermission) {
                 handleNoPermission(player, inventory, i, hasArmour, noPermissionPane, defaultEquipButton);
             } else {
+                // Handle case where player has permission for current column
                 handleHasPermission(inventory, i, hasArmour, empty);
             }
         }
     }
 
+    // Handles setting items when player does not have permission for a column
     private void handleNoPermission(Player player, Inventory inventory, int column, boolean hasArmour, ItemStack noPermissionPane, ItemStack defaultEquipButton) {
+        // Check if the column has armour items
         if (hasArmour) {
+            // Iterate through the rows of the column (0 to 3)
             for (int c = column; c < 36; c += 9) {
                 ItemStack item = inventory.getItem(c);
-                if (item != null) {
-                    if (item.getType().isBlock()) {
-                        inventory.setItem(c, noPermissionPane);
-                    } else {
+                // Check if item exists and is a block type
+                if (item != null && item.getType().isBlock()) {
+                    inventory.setItem(c, noPermissionPane); // Replace with no permission pane
+                } else {
+                    // Refund item to player if inventory is full, then replace with no permission pane
+                    if (item != null) {
                         refundItem(player, item);
-                        inventory.setItem(c, noPermissionPane);
                     }
+                    inventory.setItem(c, noPermissionPane);
                 }
             }
         } else {
+            // Set no permission pane for all slots in the column
             for (int j = 0; j < 4; j++) {
                 inventory.setItem(column + j * 9, noPermissionPane);
             }
         }
+        // Set default equip button for the current column
         inventory.setItem(column + 36, defaultEquipButton);
     }
 
+    // Handles setting items when player has permission for a column
     private void handleHasPermission(Inventory inventory, int column, boolean hasArmour, ItemStack empty) {
+        // Check if the column has armour items
         if (!hasArmour) {
+            // Set default panes for all slots in the column
             for (int j = 0; j < 4; j++) {
                 inventory.setItem(column + j * 9, createDefaultPane(column + j * 9));
             }
+            // Set empty pane for equip button slot
             inventory.setItem(column + 36, empty);
         } else {
+            // Check each row in the column
             for (int x = 0; x < 36; x += 9) {
                 ItemStack item = inventory.getItem(column + x);
+                // If item is a block type, replace with default pane
                 if (item != null && item.getType().isBlock()) {
                     inventory.setItem(column + x, createDefaultPane(column + x));
                 }
@@ -183,11 +200,13 @@ public class WardrobeGUI {
         }
     }
 
+    // Refunds item to player or drops it if inventory is full
     private void refundItem(Player player, ItemStack item) {
         if (!player.getInventory().addItem(item).isEmpty()) {
             player.getWorld().dropItem(player.getLocation(), item);
         }
     }
+
 
     /**
      * Prevents item duplication by ensuring that armor pieces are properly handled.
