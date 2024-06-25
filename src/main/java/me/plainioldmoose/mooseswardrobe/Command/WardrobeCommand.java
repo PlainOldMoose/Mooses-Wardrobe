@@ -1,5 +1,6 @@
 package me.plainioldmoose.mooseswardrobe.Command;
 
+import me.plainioldmoose.mooseswardrobe.Data.WardrobeData;
 import me.plainioldmoose.mooseswardrobe.GUI.WardrobeGUI;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
@@ -50,8 +51,8 @@ public final class WardrobeCommand implements CommandExecutor {
             }
             player.sendMessage("§f[§c§lWardrobe§f]§c Player does not exist!");
             return true;
-        } else {
-            player.sendMessage("§f[§c§lWardrobe§f]§c Unknown command!");
+        } else if (args.length == 2) {
+            WardrobeData.getInstance().reset(Bukkit.getPlayer(args[1]));
         }
 
         return true; // Indicate that the command was successfully executed
