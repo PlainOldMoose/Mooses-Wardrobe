@@ -6,13 +6,20 @@ import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * The WardrobeCommand class handles the execution of the wardrobe command.
  * When a player uses this command, it opens their wardrobe GUI.
  */
-public final class WardrobeCommand implements CommandExecutor {
+public final class WardrobeCommand implements CommandExecutor, TabCompleter {
 
     /**
      * Executes the given command, returning its success.
@@ -39,32 +46,93 @@ public final class WardrobeCommand implements CommandExecutor {
                 return true;
             }
             new WardrobeGUI().displayTo(player);
-        } else if (args.length == 1) {
+            return true; // Return true after displaying GUI
+        }
+
+        // If one argument is provided, check if it's for opening another player's wardrobe
+        if (args.length == 1) {
             if (!player.hasPermission("wardrobe.admin")) {
                 player.sendMessage("§f[§c§lWardrobe§f]§c You do not have permission!");
                 return true;
             }
-            Player playerArg = Bukkit.getPlayer(args[0]);
-            if (playerArg != null) {
-                new WardrobeGUI().displayTo(playerArg);
+            String partialName = args[0].toLowerCase();
+            List<String> onlinePlayers = Bukkit.getOnlinePlayers().stream()
+                    .map(Player::getName)
+                    .filter(name -> name.toLowerCase().startsWith(partialName))
+                    .collect(Collectors.toList());
+
+            if (onlinePlayers.isEmpty()) {
+                player.sendMessage("§f[§c§lWardrobe§f]§c No matching players found!");
                 return true;
             }
-            player.sendMessage("§f[§c§lWardrobe§f]§c Player does not exist!");
+
+            // Auto-complete with the first matching player name
+            if (onlinePlayers.size() == 1) {
+                new WardrobeGUI().displayTo(Bukkit.getPlayer(onlinePlayers.get(0)));
+                player.sendMessage("§f[§c§lWardrobe§f]§a Opening " + Bukkit.getPlayer(onlinePlayers.get(0)).getName() + "'s wardrobe");
+                return true; // Return true after displaying GUI
+            }
+
+            // Display all matching player names for manual selection
+            player.sendMessage("§f[§c§lWardrobe§f]§c Matching players: " + String.join(", ", onlinePlayers));
             return true;
-        } else if (args.length == 2) {
-            WardrobeData.getInstance().reset(Bukkit.getPlayer(args[1]));
         }
 
-        return true; // Indicate that the command was successfully executed
+        // If two arguments are provided and the first is "reset", reset the wardrobe data
+        if (args.length == 2 && args[0].equalsIgnoreCase("reset")) {
+            if (!player.hasPermission("wardrobe.admin")) {
+                player.sendMessage("§f[§c§lWardrobe§f]§c You do not have permission!");
+                return true;
+            }
+            Player playerToReset = Bukkit.getPlayer(args[1]);
+            if (playerToReset == null) {
+                player.sendMessage("§f[§c§lWardrobe§f]§c Player does not exist!");
+                return true;
+            }
+            WardrobeData.getInstance().reset(playerToReset);
+            player.sendMessage("§f[§c§lWardrobe§f]§a Successfully reset wardrobe data for " + playerToReset.getName() + ".");
+            return true; // Return true after resetting data
+        }
+
+        // If none of the conditions match, show command usage (though ideally, this should never happen if command syntax is strict)
+        player.sendMessage("§f[§c§lWardrobe§f]§c Invalid command usage.");
+        return false;
     }
 
-//    @Override
-//    public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
-//
-//
-//        if (args.length == 1)
-//            return Arrays.asList("name");
-//
-//        return new ArrayList<>(); // null = all player names
-//    }
+    /**
+     * Provides tab completion for the wardrobe command.
+     *
+     * @param sender  The source of the command
+     * @param command The command that was executed
+     * @param label   The alias of the command which was used
+     * @param args    The arguments passed to the command
+     * @return A list of possible completions for the last argument, or null for all players
+     */
+    @Override
+    public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
+        if (args.length == 1) {
+            // Tab completion for the first argument (command options)
+            List<String> completions = new ArrayList<>();
+            if (sender.hasPermission("wardrobe.admin")) {
+                completions.add("reset");
+            }
+            if (sender.hasPermission("wardrobe.open")) {
+                completions.addAll(Bukkit.getOnlinePlayers().stream()
+                        .map(Player::getName)
+                        .collect(Collectors.toList()));
+            }
+            return completions.stream()
+                    .filter(option -> option.toLowerCase().startsWith(args[0].toLowerCase()))
+                    .collect(Collectors.toList());
+        } else if (args.length == 2 && args[0].equalsIgnoreCase("reset") && sender.hasPermission("wardrobe.admin")) {
+            // Tab completion for the second argument (player names for reset)
+            return Bukkit.getOnlinePlayers().stream()
+                    .map(Player::getName)
+                    .filter(name -> name.toLowerCase().startsWith(args[1].toLowerCase()))
+                    .collect(Collectors.toList());
+        }
+        return new ArrayList<>(); // Return an empty list if no completions are found
+    }
+
 }
+

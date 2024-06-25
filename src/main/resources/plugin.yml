@@ -5,7 +5,7 @@ api-version: '1.20'
 commands:
   wardrobe:
     description: "Open a wardrobe"
-    usage: "/wardrobe [name]"
+    usage: "/wardrobe [reset/name] [name]"
     aliases: [ wr ]
     permission: wardrobe.open
     permission-message: "You do not have permission to open a wardrobe"
