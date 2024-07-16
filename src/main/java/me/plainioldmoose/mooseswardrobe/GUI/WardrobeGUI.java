@@ -13,12 +13,14 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.metadata.FixedMetadataValue;
 
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-// TODO - Implement live updating permissions / wardrobe slots
+// TODO - Item refunds when resetting wardrobe
+// TODO - fix /wardrobe <name> bug opening for the player named instead of the command sender
 
 /**
  * The WardrobeGUI class represents a custom inventory GUI for the Wardrobe plugin.
@@ -38,38 +40,11 @@ public class WardrobeGUI {
     }
 
     /**
-     * Adds a button to the wardrobe GUI.
-     *
-     * @param button The button to add.
-     */
-    protected void addButton(Button button) {
-        this.buttons.add(button);
-    }
-
-    /**
-     * Sets the size of the wardrobe GUI.
-     *
-     * @param size The size to set.
-     */
-    protected void setSize(int size) {
-        this.size = size;
-    }
-
-    /**
-     * Sets the title of the wardrobe GUI.
-     *
-     * @param title The title to set.
-     */
-    protected void setTitle(String title) {
-        this.title = title;
-    }
-
-    /**
      * Displays the wardrobe GUI to a player.
      *
      * @param player The player to display the GUI to.
      */
-    public void displayTo(Player player) {
+    public void displayTo(Player player, boolean self, @Nullable UUID playerID) {
         buttons.clear();
         // Create the inventory with the specified size and title
         final Inventory inventory = Bukkit.createInventory(player, this.size, ChatColor.translateAlternateColorCodes('&', this.title));
@@ -88,25 +63,33 @@ public class WardrobeGUI {
             inventory.setItem(button.getSlot(), button.getItem());
         }
 
-        // Load and set saved inventory contents if they exist
-        UUID playerUUID = player.getUniqueId();
-        Map<UUID, ItemStack[]> savedInventories = WardrobeData.getInstance().getSavedInventories();
-        if (savedInventories.containsKey(playerUUID)) {
-            inventory.setContents(savedInventories.get(playerUUID));
+        if (self) {
+            // Load and set saved inventory contents if they exist
+            UUID playerUUID = player.getUniqueId();
+            Map<UUID, ItemStack[]> savedInventories = WardrobeData.getInstance().getSavedInventories();
+            if (savedInventories.containsKey(playerUUID)) {
+                inventory.setContents(savedInventories.get(playerUUID));
+            }
+            updateButtonsOnPermissions(player, inventory);
+            // Check for item duplication issues
+            dupeFailsafe(player, inventory);
+
+            // Ensure no leftover metadata interferes
+            if (player.hasMetadata("WardrobeGUI")) {
+                player.closeInventory();
+            }
+
+            // Set metadata to indicate the wardrobe GUI is open and display it
+            player.setMetadata("WardrobeGUI", new FixedMetadataValue(Wardrobe.getInstance(), this));
+        } else {
+            // Load and set saved inventory contents if they exist
+            Map<UUID, ItemStack[]> savedInventories = WardrobeData.getInstance().getSavedInventories();
+            if (savedInventories.containsKey(playerID)) {
+                inventory.setContents(savedInventories.get(playerID));
+            }
+            player.setMetadata("CheckingWardrobe", new FixedMetadataValue(Wardrobe.getInstance(), this));
         }
 
-        updateButtonsOnPermissions(player, inventory);
-        dupeFailsafe(player, inventory);
-        // Check for item duplication issues
-
-
-        // Ensure no leftover metadata interferes
-        if (player.hasMetadata("WardrobeGUI")) {
-            player.closeInventory();
-        }
-
-        // Set metadata to indicate the wardrobe GUI is open and display it
-        player.setMetadata("WardrobeGUI", new FixedMetadataValue(Wardrobe.getInstance(), this));
         player.openInventory(inventory);
     }
 

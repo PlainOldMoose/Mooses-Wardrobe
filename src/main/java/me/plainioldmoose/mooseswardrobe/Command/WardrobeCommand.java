@@ -45,7 +45,7 @@ public final class WardrobeCommand implements CommandExecutor, TabCompleter {
                 player.sendMessage("§f[§c§lWardrobe§f]§c You do not have permission!");
                 return true;
             }
-            new WardrobeGUI().displayTo(player);
+            new WardrobeGUI().displayTo(player, true, null);
             return true; // Return true after displaying GUI
         }
 
@@ -68,7 +68,8 @@ public final class WardrobeCommand implements CommandExecutor, TabCompleter {
 
             // Auto-complete with the first matching player name
             if (onlinePlayers.size() == 1) {
-                new WardrobeGUI().displayTo(Bukkit.getPlayer(onlinePlayers.get(0)));
+                Player playerToOpen = Bukkit.getPlayer(onlinePlayers.get(0));
+                new WardrobeGUI().displayTo(player, false, playerToOpen.getUniqueId());
                 player.sendMessage("§f[§c§lWardrobe§f]§a Opening " + Bukkit.getPlayer(onlinePlayers.get(0)).getName() + "'s wardrobe");
                 return true; // Return true after displaying GUI
             }
