@@ -42,7 +42,7 @@ public final class WardrobeCommand implements CommandExecutor, TabCompleter {
         // If no arguments are provided, display the wardrobe GUI to the player
         if (args.length == 0) {
             if (!player.hasPermission("wardrobe.open")) {
-                player.sendMessage("§f[§c§lWardrobe§f]§c You do not have permission!");
+                player.sendMessage("§b§lWardrobe §8»§3 You do not have permission!");
                 return true;
             }
             new WardrobeGUI().displayTo(player, true, null);
@@ -52,7 +52,7 @@ public final class WardrobeCommand implements CommandExecutor, TabCompleter {
         // If one argument is provided, check if it's for opening another player's wardrobe
         if (args.length == 1) {
             if (!player.hasPermission("wardrobe.admin")) {
-                player.sendMessage("§f[§c§lWardrobe§f]§c You do not have permission!");
+                player.sendMessage("§b§lWardrobe §8»§3 You do not have permission!");
                 return true;
             }
             String partialName = args[0].toLowerCase();
@@ -62,7 +62,7 @@ public final class WardrobeCommand implements CommandExecutor, TabCompleter {
                     .collect(Collectors.toList());
 
             if (onlinePlayers.isEmpty()) {
-                player.sendMessage("§f[§c§lWardrobe§f]§c No matching players found!");
+                player.sendMessage("§b§lWardrobe §8»§3 No matching players found!");
                 return true;
             }
 
@@ -70,33 +70,33 @@ public final class WardrobeCommand implements CommandExecutor, TabCompleter {
             if (onlinePlayers.size() == 1) {
                 Player playerToOpen = Bukkit.getPlayer(onlinePlayers.get(0));
                 new WardrobeGUI().displayTo(player, false, playerToOpen.getUniqueId());
-                player.sendMessage("§f[§c§lWardrobe§f]§a Opening " + Bukkit.getPlayer(onlinePlayers.get(0)).getName() + "'s wardrobe");
+                player.sendMessage("§b§lWardrobe §8»§3 Opening " + Bukkit.getPlayer(onlinePlayers.get(0)).getName() + "'s wardrobe");
                 return true; // Return true after displaying GUI
             }
 
             // Display all matching player names for manual selection
-            player.sendMessage("§f[§c§lWardrobe§f]§c Matching players: " + String.join(", ", onlinePlayers));
+            player.sendMessage("§b§lWardrobe §8»§3 Matching players: " + String.join(", ", onlinePlayers));
             return true;
         }
 
         // If two arguments are provided and the first is "reset", reset the wardrobe data
         if (args.length == 2 && args[0].equalsIgnoreCase("reset")) {
             if (!player.hasPermission("wardrobe.admin")) {
-                player.sendMessage("§f[§c§lWardrobe§f]§c You do not have permission!");
+                player.sendMessage("§b§lWardrobe §8»§3 You do not have permission!");
                 return true;
             }
             Player playerToReset = Bukkit.getPlayer(args[1]);
             if (playerToReset == null) {
-                player.sendMessage("§f[§c§lWardrobe§f]§c Player does not exist!");
+                player.sendMessage("§b§lWardrobe §8»§3 Player does not exist!");
                 return true;
             }
             WardrobeData.getInstance().reset(playerToReset);
-            player.sendMessage("§f[§c§lWardrobe§f]§a Successfully reset wardrobe data for " + playerToReset.getName() + ".");
+            player.sendMessage("§b§lWardrobe §8»§3 Successfully reset wardrobe data for " + playerToReset.getName() + ".");
             return true; // Return true after resetting data
         }
 
         // If none of the conditions match, show command usage (though ideally, this should never happen if command syntax is strict)
-        player.sendMessage("§f[§c§lWardrobe§f]§c Invalid command usage.");
+        player.sendMessage("§b§lWardrobe §8»§3 Invalid command usage.");
         return false;
     }
 

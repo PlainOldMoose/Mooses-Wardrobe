@@ -26,7 +26,7 @@ public final class WardrobeListener implements Listener {
         // Checks for any admins viewing wardrobes, if found disables wardrobes for everyone
         for (Player p : Bukkit.getOnlinePlayers()) {
             if (p.hasMetadata("CheckingWardrobe") && !p.equals(player)) {
-                player.sendMessage("§f[§c§lWardrobe§f]§c Admin is checking wardrobes!");
+                player.sendMessage("§b§lWardrobe §8»§3 Admin is checking wardrobes!");
                 player.removeMetadata("WardrobeGUI", Wardrobe.getInstance());
                 event.setCancelled(true);
                 return;
@@ -46,7 +46,7 @@ public final class WardrobeListener implements Listener {
                     Player checkedPlayer = Bukkit.getPlayer(playerUUID);
                     if (checkedPlayer.hasMetadata("WardrobeGUI")) {
                         checkedPlayer.closeInventory();
-                        checkedPlayer.sendMessage("§f[§c§lWardrobe§f]§c Admin is checking your wardrobe!");
+                        checkedPlayer.sendMessage("§b§lWardrobe §8»§3 Admin is checking your wardrobe!");
                         checkedPlayer.removeMetadata("WardrobeGUI", Wardrobe.getInstance());
                     }
                 }
@@ -63,7 +63,6 @@ public final class WardrobeListener implements Listener {
     public void onInventoryClick(InventoryClickEvent event) {
         final Player player = (Player) event.getWhoClicked();
         final int slot = event.getSlot();
-        event.setCancelled(false);
 
         // Check if the player has the "WardrobeGUI" metadata
         if (player.hasMetadata("WardrobeGUI") || player.hasMetadata("CheckingWardrobe")) {

@@ -105,7 +105,7 @@ public class WardrobeGUI {
                 public void onClick(Player player) {
                     int loadoutColumn = this.getSlot() % 9 + 1;
                     if (!(player.hasPermission("wardrobe.use.slot" + loadoutColumn))) {
-                        player.sendMessage("§f[§c§lWardrobe§f]§c You do not have permission this loadout!");
+                        player.sendMessage("§b§lWardrobe §8»§3 You do not have permission this loadout!");
                     }
                 }
             });
@@ -283,7 +283,7 @@ public class WardrobeGUI {
 
                         // Check if editing an active loadout
                         if (isEditingActiveLoadout(inventory, slot)) {
-                            player.sendMessage("§f[§c§lWardrobe§f]§c You cannot edit active loadout!");
+                            player.sendMessage("§b§lWardrobe §8»§3 You cannot edit active loadout!");
                             player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
                             return;
                         }
@@ -396,7 +396,7 @@ public class WardrobeGUI {
                     int loadoutColumn = this.getSlot() % 9 + 1;
                     if (player.hasPermission("wardrobe.use.slot" + loadoutColumn)) {
                         if (!columnHasArmour(inventory, slot)) {
-                            player.sendMessage("§f[§c§lWardrobe§f]§c You cannot select empty loadout!");
+                            player.sendMessage("§b§lWardrobe §8»§3 You cannot select empty loadout!");
                             player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
                             return;
                         } else {
